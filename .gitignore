@@ -1,6 +1,7 @@
 node_modules/
 .next/
 out/
+.vercel/
 # Nunca versionar secretos. El ejemplo público se conserva para instalación.
 .env*
 !.env.example
