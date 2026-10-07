@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+# El contexto de build no debe incluir secretos; el ejemplo es intencionalmente seguro.
+.env*
+!.env.example
+*.tsbuildinfo
+supabase/.temp

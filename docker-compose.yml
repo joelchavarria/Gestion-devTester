@@ -1,0 +1,24 @@
+services:
+  delivery-web:
+    build:
+      context: .
+      target: development
+    command: npm run dev -- -H 0.0.0.0
+    env_file:
+      - .env.local
+    environment:
+      # Browser code keeps NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321.
+      # The container reaches the local Supabase API through this internal URL.
+      SUPABASE_SERVER_URL: http://host.docker.internal:54321
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      # Solo el equipo local puede llegar al panel. Un túnel HTTPS, si se usa,
+      # debe apuntar explícitamente a este puerto y no exponer Docker a la LAN.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - .:/app
+      - delivery_node_modules:/app/node_modules
+
+volumes:
+  delivery_node_modules:

@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+# Nunca versionar secretos. El ejemplo público se conserva para instalación.
+.env*
+!.env.example
+*.tsbuildinfo
+supabase/.temp/
+
+# Capturas de revisión locales: no forman parte de la aplicación ni de su documentación pública.
+/*.png
+/Login
+/AGENTS.md
