@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-export function GET() {
-  return NextResponse.json({ ok: true, service: "devtesters-delivery", timestamp: new Date().toISOString() });
+export async function GET() {
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.from("driver_profiles").select("assigned_vehicle_id").limit(1);
+  const databaseReady = !error;
+
+  return NextResponse.json({
+    ok: databaseReady,
+    service: "devtesters-delivery",
+    dependencies: { database: databaseReady ? "ready" : "unavailable" },
+    timestamp: new Date().toISOString(),
+  }, { status: databaseReady ? 200 : 503 });
 }
