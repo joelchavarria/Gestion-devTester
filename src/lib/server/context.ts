@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
+import { redirect } from "next/navigation";
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -49,6 +50,29 @@ export function requireOperationsContext() {
 
 export function requireOwnerContext() {
   return requireCompanyContext(ownerRoles);
+}
+
+function redirectMissingCompany(error: unknown): never {
+  if (error instanceof AppError && error.status === 403 && error.message === "Tu cuenta todavía no pertenece a una empresa.") {
+    redirect("/onboarding");
+  }
+  throw error;
+}
+
+export async function requireOperationsPageContext() {
+  try {
+    return await requireOperationsContext();
+  } catch (error) {
+    return redirectMissingCompany(error);
+  }
+}
+
+export async function requireOwnerPageContext() {
+  try {
+    return await requireOwnerContext();
+  } catch (error) {
+    return redirectMissingCompany(error);
+  }
 }
 
 export async function requireDriverContext() {
