@@ -31,7 +31,12 @@ export function LoginScreen() {
         .limit(1)
         .maybeSingle();
       if (membershipError) throw membershipError;
-      router.replace(membership?.role === "driver" ? "/driver" : "/admin");
+      const destination = !membership
+        ? "/onboarding"
+        : membership.role === "driver"
+          ? "/driver"
+          : "/admin";
+      router.replace(destination);
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible iniciar sesión.");
