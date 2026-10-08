@@ -37,6 +37,15 @@ export async function POST(request: Request) {
     if (incidentError) throw incidentError;
     const { error: eventError } = await admin.from("incident_events").insert({ company_id: context.companyId, incident_id: incident.id, actor_id: context.userId, body: "Incidencia reportada desde la PWA del motorizado." });
     if (eventError) throw eventError;
+    const { error: notificationError } = await admin.from("notifications").insert({
+      company_id: context.companyId,
+      channel: "in_app",
+      kind: "incident_reported",
+      title: `Nueva incidencia: ${input.title}`,
+      body: input.description,
+      payload: { incidentId: incident.id, orderId: input.orderId ?? null, driverId: context.driver.id, priority: input.priority },
+    });
+    if (notificationError) throw notificationError;
     return Response.json({ id: incident.id, message: "Incidencia enviada a operaciones." }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);

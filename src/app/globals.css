@@ -203,3 +203,58 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .map-empty-state { display: grid; min-height: 440px; place-items: center; padding: 32px; }
 .invite-accept-card { text-align: center; }.invite-accept-card .auth-icon { margin: 0 auto; }.loading-copy { display: inline-block; margin-top: 18px; color: var(--green); font-size: 13px; font-weight: 800; }
 @media (max-width: 680px) { .business-hour-row { grid-template-columns: 1fr 76px 10px 76px; gap: 5px; }.business-hour-row .switch-label span { font-size: 11px; }.business-hour-row input[type="time"] { font-size: 11px; }.panel { border-radius: 15px; }.metric-card { border-radius: 14px; } }
+
+/* Functional notifications and account menu */
+.notification-center, .profile-menu-wrap { position: relative; }
+.notification-popover, .profile-popover { position: absolute; z-index: 60; right: 0; top: calc(100% + 10px); width: min(390px, calc(100vw - 28px)); overflow: hidden; color: var(--ink); background: rgba(255,255,255,.98); border: 1px solid #dfe5e9; border-radius: 16px; box-shadow: 0 22px 60px rgba(15,23,42,.18); backdrop-filter: blur(18px); }
+.notification-popover > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 16px 12px; border-bottom: 1px solid #edf0f2; }
+.notification-popover > header > div { display: grid; gap: 3px; }
+.notification-popover > header strong { font-size: 14px; }
+.notification-popover > header small { color: var(--muted); font-size: 10px; }
+.notification-popover > header button { display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px; color: var(--green-dark); border: 0; border-radius: 8px; background: var(--green-soft); font-size: 10px; font-weight: 800; }
+.notification-list { max-height: 370px; overflow-y: auto; }
+.notification-item { display: grid; grid-template-columns: 31px minmax(0,1fr); gap: 10px; padding: 13px 16px; color: inherit; border-bottom: 1px solid #f0f2f4; }
+.notification-item:hover { background: #f8faf9; }
+.notification-item.is-unread { background: #f2fbf6; }
+.notification-item > span { display: grid; place-items: center; width: 30px; height: 30px; color: var(--green); background: var(--green-soft); border-radius: 9px; }
+.notification-item > div { min-width: 0; }
+.notification-item strong { display: block; font-size: 12px; }
+.notification-item p { margin: 3px 0 5px; overflow: hidden; color: #65748a; font-size: 10px; line-height: 1.4; text-overflow: ellipsis; }
+.notification-item small { color: #8792a3; font-size: 9px; }
+.notification-empty { padding: 28px 18px; color: var(--muted); text-align: center; font-size: 11px; }
+.notification-center.is-driver > button { position: relative; display: grid; place-items: center; width: 36px; height: 36px; }
+.notification-center.is-driver .notification-popover { top: 44px; right: -2px; }
+.notification-center.is-driver .notification-popover button { color: var(--green-dark); }
+
+.profile-popover { width: 260px; padding: 8px; }
+.profile-popover > div { display: flex; align-items: center; gap: 9px; margin-bottom: 5px; padding: 9px; border-bottom: 1px solid #edf0f2; }
+.profile-popover p { display: grid; gap: 2px; min-width: 0; }
+.profile-popover p strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-popover p small { color: var(--muted); font-size: 9px; }
+.profile-popover > a, .profile-popover > button { display: flex; width: 100%; min-height: 38px; align-items: center; padding: 0 10px; color: #445268; border: 0; border-radius: 9px; background: transparent; text-align: left; font-size: 11px; font-weight: 700; }
+.profile-popover > a:hover, .profile-popover > button:hover { color: var(--green-dark); background: #f3f8f5; }
+.profile-popover > button { color: var(--red); }
+
+/* Visible PWA installation controls */
+.pwa-install-card { display: grid; grid-template-columns: 52px minmax(0,1fr) auto; align-items: center; gap: 14px; position: relative; background: #fff; }
+.pwa-install-card + .drivers-command-bar { margin-top: 14px; }
+.pwa-install-card.compact { margin-top: 15px; padding: 16px; background: linear-gradient(135deg, #eefaf4, #fff); border: 1px solid #cfe8da; border-radius: 18px; box-shadow: 0 6px 16px rgba(15,23,42,.035); }
+.pwa-install-icon { display: grid; place-items: center; width: 50px; height: 50px; color: #fff; background: linear-gradient(135deg, #19a560, #087346); border-radius: 15px; box-shadow: 0 9px 20px rgba(8,117,70,.2); }
+.pwa-install-copy { min-width: 0; }
+.pwa-install-copy h3 { margin: 0 0 4px; font-size: 15px; }
+.pwa-install-copy p { max-width: 540px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.pwa-install-copy code { display: inline-block; margin-top: 7px; padding: 4px 7px; color: var(--green-dark); background: var(--green-soft); border-radius: 6px; font-size: 10px; font-weight: 800; }
+.pwa-install-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; min-width: 260px; }
+.pwa-install-actions .button { white-space: nowrap; }
+.pwa-copy-link { grid-column: 1 / -1; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 3px; color: var(--green-dark); border: 0; background: transparent; font-size: 10px; font-weight: 800; }
+.pwa-installed { grid-column: 1 / -1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; color: var(--green-dark); background: var(--green-soft); border-radius: 10px; font-size: 11px; font-weight: 800; }
+.pwa-install-help { grid-column: 2 / -1; display: flex; align-items: center; gap: 7px; padding: 10px; color: #35644f; background: #eff9f3; border-radius: 9px; font-size: 10px; }
+
+@media (max-width: 680px) {
+  .notification-popover { position: fixed; top: 66px; right: 10px; }
+  .profile-popover { position: fixed; top: 66px; right: 10px; }
+  .pwa-install-card { grid-template-columns: 44px minmax(0,1fr); }
+  .pwa-install-icon { width: 43px; height: 43px; border-radius: 13px; }
+  .pwa-install-actions { grid-column: 1 / -1; min-width: 0; width: 100%; }
+  .pwa-install-help { grid-column: 1 / -1; }
+}

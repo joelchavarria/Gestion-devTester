@@ -1,6 +1,7 @@
 "use client";
 
 import { WhatsAppEmbeddedSignup } from "@/components/whatsapp-embedded-signup";
+import { PwaInstallCard } from "@/components/pwa-install-card";
 import { NumericInput } from "@/components/numeric-input";
 import { Badge } from "@/components/ui";
 import type { AdminBootstrap, BusinessHour, CompanySettings } from "@/lib/operations/types";
@@ -111,7 +112,7 @@ function OperationSettings({ settings, onUpdate }: { settings: CompanySettings; 
 }
 
 function DriverSettings({ settings, onUpdate }: { settings: CompanySettings; onUpdate: (patch: Partial<CompanySettings>) => void }) {
-  return <div className="settings-stack"><section className="settings-card"><h3>Políticas de la PWA</h3><label className="toggle-row"><span><strong>OTP para finalizar</strong><small>El motorizado necesita el código que recibe el administrador para completar una entrega.</small></span><input type="checkbox" checked={settings.otpDeliveryRequired} onChange={(event) => onUpdate({ otpDeliveryRequired: event.target.checked })} /><i /></label><label className="settings-input">Compartir ubicación<select value={settings.gpsSharingMode} onChange={(event) => onUpdate({ gpsSharingMode: event.target.value as CompanySettings["gpsSharingMode"] })}><option value="active_orders_only">Solo con pedido aceptado</option><option value="active_shift">Durante toda la jornada</option></select></label><label className="settings-input">Alerta de desvío de ruta<div><NumericInput min={50} value={settings.routeDeviationThresholdM} onValueChange={(value) => onUpdate({ routeDeviationThresholdM: value })} /><b>metros</b></div></label></section></div>;
+  return <div className="settings-stack"><PwaInstallCard /><section className="settings-card"><h3>Políticas de la PWA</h3><label className="toggle-row"><span><strong>OTP para finalizar</strong><small>El motorizado necesita el código que recibe el administrador para completar una entrega.</small></span><input type="checkbox" checked={settings.otpDeliveryRequired} onChange={(event) => onUpdate({ otpDeliveryRequired: event.target.checked })} /><i /></label><label className="settings-input">Compartir ubicación<select value={settings.gpsSharingMode} onChange={(event) => onUpdate({ gpsSharingMode: event.target.value as CompanySettings["gpsSharingMode"] })}><option value="active_orders_only">Solo con pedido aceptado</option><option value="active_shift">Durante toda la jornada</option></select></label><label className="settings-input">Alerta de desvío de ruta<div><NumericInput min={50} value={settings.routeDeviationThresholdM} onValueChange={(value) => onUpdate({ routeDeviationThresholdM: value })} /><b>metros</b></div></label></section></div>;
 }
 
 function FleetSettings({ settings, onUpdate }: { settings: CompanySettings; onUpdate: (patch: Partial<CompanySettings>) => void }) {

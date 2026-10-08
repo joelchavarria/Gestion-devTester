@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bell,
   CaretDown,
   ChartBar,
   ChatCenteredText,
@@ -14,10 +13,13 @@ import {
   Truck,
   WarningCircle,
 } from "@phosphor-icons/react";
+import { NotificationCenter } from "@/components/notification-center";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import clsx from "clsx";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { useState } from "react";
 
 const navigation = [
   { href: "/admin", label: "Inicio", icon: House },
@@ -32,8 +34,18 @@ const navigation = [
   { href: "/admin/configuracion", label: "Configuración", icon: GearSix },
 ];
 
-export function AdminShell({ children, companyName, whatsappConnected }: { children: ReactNode; companyName: string; whatsappConnected: boolean }) {
+type AdminProfile = { name: string; role: string; initials: string };
+
+export function AdminShell({ children, companyName, whatsappConnected, profile }: { children: ReactNode; companyName: string; whatsappConnected: boolean; profile: AdminProfile }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  async function logout() {
+    await createSupabaseBrowserClient().auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
 
   return (
     <div className="app-shell">
@@ -74,16 +86,16 @@ export function AdminShell({ children, companyName, whatsappConnected }: { child
             <CaretDown size={16} />
           </button>
           <div className="topbar-actions">
-            <span className="whatsapp-status"><span className={whatsappConnected ? "" : "is-offline"} /> {whatsappConnected ? "WhatsApp conectado" : "WhatsApp pendiente"}</span>
-            <button className="icon-button has-notification" type="button" aria-label="Ver notificaciones">
-              <Bell size={21} />
-              <i>3</i>
-            </button>
-            <button className="user-menu" type="button">
-              <span className="avatar avatar-navy">AD</span>
-              <span className="user-copy"><strong>Administrador</strong><small>Propietario</small></span>
-              <CaretDown size={16} />
-            </button>
+            <Link className="whatsapp-status" href="/admin/configuracion" title="Abrir configuración de WhatsApp"><span className={whatsappConnected ? "" : "is-offline"} /> {whatsappConnected ? "WhatsApp conectado" : "WhatsApp pendiente"}</Link>
+            <NotificationCenter />
+            <div className="profile-menu-wrap">
+              <button className="user-menu" type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((current) => !current)}>
+                <span className="avatar avatar-navy">{profile.initials}</span>
+                <span className="user-copy"><strong>{profile.name}</strong><small>{profile.role}</small></span>
+                <CaretDown size={16} />
+              </button>
+              {profileOpen ? <div className="profile-popover"><div><span className="avatar avatar-navy">{profile.initials}</span><p><strong>{profile.name}</strong><small>{companyName} · {profile.role}</small></p></div><Link href="/admin/configuracion" onClick={() => setProfileOpen(false)}>Configuración de la cuenta</Link><Link href="/admin/configuracion" onClick={() => setProfileOpen(false)}>Datos de la empresa</Link><button type="button" onClick={() => { void logout(); }}>Cerrar sesión</button></div> : null}
+            </div>
           </div>
         </header>
         <div className="app-content">{children}</div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar, Badge } from "@/components/ui";
+import { PwaInstallCard } from "@/components/pwa-install-card";
 import type { OperationalDriver } from "@/lib/operations/types";
 import { CalendarCheck, CheckCircle, EnvelopeSimple, GasPump, Plus, UserPlus, X } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
@@ -54,6 +55,7 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
   }
 
   return <>
+    <PwaInstallCard />
     <section className="drivers-command-bar panel">
       <div><span>OPERACIÓN DE EQUIPO</span><strong>Alta segura de motorizados</strong><small>Cada motorizado recibe su propia invitación y nunca usa la cuenta de administración.</small></div>
       <div><button className="button button-secondary" type="button" onClick={() => setMode("invite")}><EnvelopeSimple size={18} /> Enviar invitación</button><button className="button button-primary" type="button" onClick={() => setMode("register")}><Plus size={18} weight="bold" /> Registrar motorizado</button></div>

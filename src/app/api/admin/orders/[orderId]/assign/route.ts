@@ -65,7 +65,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
       note: "Pedido enviado a la PWA del motorizado. Espera su aceptación.",
     });
     if (eventError) throw eventError;
-    await admin.from("notifications").insert({
+    const { error: notificationError } = await admin.from("notifications").insert({
       company_id: context.companyId,
       user_id: driver.user_id,
       channel: "in_app",
@@ -74,6 +74,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
       body: "Abre la PWA y confirma si puedes atenderlo.",
       payload: { orderId },
     });
+    if (notificationError) throw notificationError;
     return Response.json({ otpCode: otp.code, expiresAt });
   } catch (error) {
     return apiErrorResponse(error);
