@@ -34,7 +34,7 @@ Estos pasos los realiza DevTesters **una sola vez** antes de abrir Gestión Deli
 3. Crear el portfolio comercial de DevTesters en Meta Business Suite.
 4. Crear la aplicación de Meta for Developers con el caso de uso **Conectarte con los clientes a través de WhatsApp**.
 5. Configurar Meta Embedded Signup/Facebook Login for Business, el dominio HTTPS y el webhook `https://app.tudominio.com/api/whatsapp/webhook`.
-6. Guardar los valores técnicos solo en el servidor: App ID, App Secret, Configuration ID de Embedded Signup, versión Graph, verify token y clave de cifrado.
+6. Guardar los valores técnicos solo en el servidor: App ID, App Secret, Configuration ID de Embedded Signup, versión Graph, verify token y clave de cifrado. Son valores únicos de la plataforma, no se crean por negocio.
 7. Cambiar `WHATSAPP_PROVIDER=meta` en producción y probar el webhook con un número de prueba.
 8. Dejar la app de Meta en el estado y con los permisos que Meta solicite para operar con negocios reales.
 
@@ -108,8 +108,8 @@ Este paso lo realiza el dueño administrador del negocio desde su panel. Necesit
 3. En la ventana oficial de Meta, inicia sesión con el perfil administrador del negocio, no con una cuenta de un negocio ajeno.
 4. Selecciona o crea el portfolio comercial correspondiente al negocio.
 5. Selecciona o registra el número de WhatsApp Business. Meta puede solicitar un código SMS o llamada para validar el número.
-6. Acepta los permisos de mensajería necesarios y finaliza el flujo de Meta.
-7. Vuelve a Gestión Delivery y confirma que el estado indique **Canal conectado**.
+6. Acepta los permisos de mensajería necesarios y finaliza el flujo de Meta. Gestión Delivery registra el teléfono, crea su PIN técnico, guarda el token cifrado y activa el webhook automáticamente.
+7. Vuelve a Gestión Delivery y confirma que el estado indique **Canal conectado**. Si Meta interrumpió una operación, pulsa **Completar automáticamente**; no copies credenciales ni identificadores.
 8. Envía un WhatsApp de prueba desde otro teléfono. El mensaje debe aparecer en **Conversaciones**.
 9. Responde desde la bandeja para confirmar el envío saliente.
 

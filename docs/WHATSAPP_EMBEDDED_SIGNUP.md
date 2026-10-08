@@ -33,7 +33,10 @@ openssl rand -base64 32
 2. Va a **Configuración → WhatsApp Business**.
 3. Pulsa **Abrir conexión Meta** y termina la verificación/QR en la ventana oficial de Meta.
 4. La plataforma intercambia el código únicamente en el servidor, cifra el token antes de guardarlo y enlaza el número a la empresa autenticada.
-5. Meta valida el webhook y los mensajes entrantes entran a la bandeja de conversaciones.
+5. El servidor genera y cifra el PIN de registro, registra el teléfono en Cloud API y suscribe automáticamente la WABA al webhook.
+6. Meta valida el webhook y los mensajes entrantes entran a la bandeja de conversaciones.
+
+Si Meta deja uno de esos pasos incompleto, el panel muestra **Completar automáticamente**. El negocio nunca debe copiar un access token, WABA ID, Phone Number ID, PIN ni variable de entorno. `META_*` identifica la aplicación de la plataforma y se configura una sola vez; cada empresa conserva su propio token cifrado en `whatsapp_accounts`.
 
 El código no mostrará el botón activo hasta que estén configuradas `META_APP_ID`, `META_EMBEDDED_SIGNUP_CONFIG_ID` y `META_GRAPH_API_VERSION`.
 

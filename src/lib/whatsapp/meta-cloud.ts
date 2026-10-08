@@ -24,14 +24,14 @@ export class MetaCloudWhatsAppProvider implements WhatsAppProvider {
   private readonly graphVersion: string | undefined;
 
   constructor(config: WhatsAppProviderConfig = {}) {
-    this.accessToken = config.accessToken ?? process.env.META_WHATSAPP_ACCESS_TOKEN;
-    this.phoneNumberId = config.phoneNumberId ?? process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+    this.accessToken = config.accessToken;
+    this.phoneNumberId = config.phoneNumberId;
     this.graphVersion = config.graphVersion ?? process.env.META_GRAPH_API_VERSION;
   }
 
   private assertConfigured() {
     if (!this.accessToken || !this.phoneNumberId || !this.graphVersion) {
-      throw new Error("Meta Cloud API no está configurada. Define META_WHATSAPP_ACCESS_TOKEN, META_WHATSAPP_PHONE_NUMBER_ID y META_GRAPH_API_VERSION.");
+      throw new Error("No hay una cuenta de WhatsApp conectada para esta empresa.");
     }
   }
 

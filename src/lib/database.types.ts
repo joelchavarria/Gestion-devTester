@@ -727,14 +727,14 @@ isOneToOne: false
                   ]
                 },"whatsapp_accounts": {
                   Row: {
-                    "business_account_id": string | null,"company_id": string,"connection_status": string,"created_at": string,"encrypted_access_token": string | null,"id": string,"last_synced_at": string | null,"phone_number": string | null,"phone_number_id": string | null,"provider": string,"updated_at": string,"welcome_message": string
+                    "business_account_id": string | null,"company_id": string,"connection_status": string,"created_at": string,"encrypted_access_token": string | null,"encrypted_registration_pin": string | null,"id": string,"last_synced_at": string | null,"phone_number": string | null,"phone_number_id": string | null,"provider": string,"updated_at": string,"welcome_message": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "business_account_id"?: string | null,"company_id": string,"connection_status"?: string,"created_at"?: string,"encrypted_access_token"?: string | null,"id"?: string,"last_synced_at"?: string | null,"phone_number"?: string | null,"phone_number_id"?: string | null,"provider"?: string,"updated_at"?: string,"welcome_message"?: string
+                    "business_account_id"?: string | null,"company_id": string,"connection_status"?: string,"created_at"?: string,"encrypted_access_token"?: string | null,"encrypted_registration_pin"?: string | null,"id"?: string,"last_synced_at"?: string | null,"phone_number"?: string | null,"phone_number_id"?: string | null,"provider"?: string,"updated_at"?: string,"welcome_message"?: string
                   }
                   Update: {
-                    "business_account_id"?: string | null,"company_id"?: string,"connection_status"?: string,"created_at"?: string,"encrypted_access_token"?: string | null,"id"?: string,"last_synced_at"?: string | null,"phone_number"?: string | null,"phone_number_id"?: string | null,"provider"?: string,"updated_at"?: string,"welcome_message"?: string
+                    "business_account_id"?: string | null,"company_id"?: string,"connection_status"?: string,"created_at"?: string,"encrypted_access_token"?: string | null,"encrypted_registration_pin"?: string | null,"id"?: string,"last_synced_at"?: string | null,"phone_number"?: string | null,"phone_number_id"?: string | null,"provider"?: string,"updated_at"?: string,"welcome_message"?: string
                   }
                   Relationships: [
                     {
