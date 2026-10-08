@@ -1,6 +1,6 @@
 "use client";
 
-import { WhatsAppEmbeddedSignup } from "@/components/whatsapp-embedded-signup";
+import { WhatsAppQrConnection } from "@/components/whatsapp-qr-connection";
 import { PwaInstallCard } from "@/components/pwa-install-card";
 import { NumericInput } from "@/components/numeric-input";
 import { Badge } from "@/components/ui";
@@ -79,7 +79,7 @@ export function SettingsCenter({ data }: { data: AdminBootstrap }) {
             : active === "usuarios" ? <InfoCard title="Usuarios y permisos" description="Registra motorizados desde el módulo Motorizados. El dueño controla el acceso administrativo y cada motorizado entra con su propia cuenta PWA." rows={[["Propietario", "Control total de la empresa"], ["Operadores", "Atienden conversaciones y pedidos"], ["Motorizados", "Acceso exclusivo a la PWA"]]} />
               : active === "notificaciones" ? <InfoCard title="Notificaciones" description="Las alertas de pedido, incidencias y mantenimiento se generan dentro del panel. WhatsApp se usa para conversar con clientes desde la bandeja." rows={[["Pedidos asignados", "Notificación en PWA"], ["Incidencias", "Panel de administración"], ["Mantenimientos", "Bloqueo de jornada al vencer"]]} />
                 : active === "seguridad" ? <InfoCard title="Seguridad" description="Las sesiones se autentican con Supabase. Las operaciones sensibles validan rol, empresa y origen antes de escribirse." rows={[["Aislamiento", "Una empresa no puede leer otra"], ["OTP", settings.otpDeliveryRequired ? "Obligatorio para entregar" : "Desactivado"], ["Auditoría", "Cambios críticos registrados"]]} />
-                  : <InfoCard title="Integraciones" description="Completa las variables del entorno antes de activar servicios externos." rows={[["WhatsApp Business", data.whatsapp.connectionStatus === "connected" ? `Conectado: ${data.whatsapp.phoneNumber ?? "número verificado"}` : "Pendiente de Meta Embedded Signup"], ["Mapas", "Google Maps + Directions API"], ["Base de datos", "Supabase (local o cloud)"]]} />;
+                  : <InfoCard title="Integraciones" description="Servicios conectados a la operación de esta empresa." rows={[["WhatsApp Business", data.whatsapp.connectionStatus === "connected" ? `Conectado: ${data.whatsapp.phoneNumber ?? "sesión vinculada"}` : "Pendiente de vincular por QR"], ["Mapas", "Google Maps + Directions API"], ["Base de datos", "Supabase (local o cloud)"]]} />;
 
   return <div className="settings-layout">
     <aside className="settings-nav panel">
@@ -91,7 +91,7 @@ export function SettingsCenter({ data }: { data: AdminBootstrap }) {
       <div className="settings-help"><span>✓</span><div><strong>Datos protegidos</strong><p>Los cambios quedan aislados dentro de tu empresa.</p></div></div>
     </aside>
     <section className="settings-content panel">
-      <div className="settings-content-heading"><div><span className="eyebrow">CONFIGURACIÓN</span><h2>{selected.label}</h2><p>{active === "whatsapp" ? "Conecta y configura el canal oficial de atención." : "Ajusta las reglas permanentes de tu operación."}</p></div>{saved ? <Badge tone="green"><CheckCircle size={15} weight="fill" /> Cambios guardados</Badge> : null}</div>
+      <div className="settings-content-heading"><div><span className="eyebrow">CONFIGURACIÓN</span><h2>{selected.label}</h2><p>{active === "whatsapp" ? "Vincula el número que atenderá la bandeja de esta empresa." : "Ajusta las reglas permanentes de tu operación."}</p></div>{saved ? <Badge tone="green"><CheckCircle size={15} weight="fill" /> Cambios guardados</Badge> : null}</div>
       {content}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       <div className="settings-save"><button className="button button-primary" type="button" onClick={() => { void save(); }} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button></div>
@@ -104,7 +104,7 @@ function CompanySettings({ displayName, city, phone, hours, onDisplayName, onCit
 }
 
 function WhatsAppSettings({ channel, welcomeMessage, onWelcomeMessage }: { channel: AdminBootstrap["whatsapp"]; welcomeMessage: string; onWelcomeMessage: (value: string) => void }) {
-  return <div className="settings-stack"><WhatsAppEmbeddedSignup /><section className="settings-card"><h3>Mensajes y atención</h3><p className="panel-subtitle">Este saludo se envía una vez cuando una persona inicia una conversación nueva.</p><label className="detail-note">Mensaje de bienvenida<textarea value={welcomeMessage} onChange={(event) => onWelcomeMessage(event.target.value)} maxLength={1024} /></label><div className="settings-info"><LockKey size={19} weight="fill" /> {channel.connectionStatus === "connected" ? `Número conectado: ${channel.phoneNumber ?? "verificado por Meta"}` : "Conecta tu número desde el flujo oficial de Meta para recibir y responder mensajes reales."}</div></section></div>;
+  return <div className="settings-stack"><WhatsAppQrConnection /><section className="settings-card"><h3>Mensajes y atención</h3><p className="panel-subtitle">Este saludo se envía una vez cuando una persona inicia una conversación nueva.</p><label className="detail-note">Mensaje de bienvenida<textarea value={welcomeMessage} onChange={(event) => onWelcomeMessage(event.target.value)} maxLength={1024} /></label><div className="settings-info"><LockKey size={19} weight="fill" /> {channel.connectionStatus === "connected" ? `Número conectado: ${channel.phoneNumber ? `+${channel.phoneNumber}` : "sesión vinculada"}` : "Genera el QR y vincula WhatsApp Business para recibir y responder mensajes reales."}</div></section></div>;
 }
 
 function OperationSettings({ settings, onUpdate }: { settings: CompanySettings; onUpdate: (patch: Partial<CompanySettings>) => void }) {

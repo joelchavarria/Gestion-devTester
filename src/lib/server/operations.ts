@@ -279,7 +279,7 @@ export async function getAdminBootstrap(context: CompanyContext): Promise<AdminB
       cancellationAfterPurchaseRule: settings.cancellation_after_purchase_rule as "none" | "product_only" | "product_management" | "product_management_delivery" | "manual",
     },
     whatsapp: whatsappResult.data ? {
-      provider: whatsappResult.data.provider as "meta_cloud" | "mock",
+      provider: whatsappResult.data.provider as "qr_gateway" | "meta_cloud" | "mock",
       connectionStatus: whatsappResult.data.connection_status as "disconnected" | "pending" | "connected" | "error",
       phoneNumber: whatsappResult.data.phone_number,
       welcomeMessage: whatsappResult.data.welcome_message,

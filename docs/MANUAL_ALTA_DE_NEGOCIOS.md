@@ -11,34 +11,33 @@ El dueño del negocio debe tener lo siguiente:
 - Un correo al que tenga acceso y que no comparta con otros administradores.
 - Un teléfono de contacto del negocio.
 - Un número de WhatsApp Business que pueda administrar. Puede ser un número existente o uno nuevo.
-- Acceso de administrador al portfolio comercial de Meta donde vive ese número. Si todavía no tiene uno, el flujo oficial de Meta permite crear o elegir el portfolio y verificar el número.
+- El teléfono donde está instalado y funcionando ese WhatsApp Business.
 - La lista inicial de tarifas, horarios, zonas de atención, motorizados y vehículos.
 
-> No compartas contraseñas, códigos de verificación, tokens ni secretos de Meta con el equipo de soporte. La conexión se completa dentro de la ventana oficial de Meta.
+> No compartas contraseñas ni códigos de verificación. El dueño escanea el QR directamente desde WhatsApp Business.
 
 ## Roles y responsabilidades
 
 | Rol | Qué hace |
 | --- | --- |
-| Equipo de plataforma DevTesters | Mantiene el dominio, Supabase, la aplicación Meta, webhook y claves del servidor. Esta configuración se realiza una sola vez para toda la plataforma. |
+| Equipo de plataforma DevTesters | Mantiene el dominio, Supabase, el gateway QR persistente, webhook y secretos del servidor. Esta configuración se realiza una sola vez para toda la plataforma. |
 | Dueño administrador del negocio | Crea la empresa, define tarifas y políticas, conecta su número, registra flota e invita al equipo. |
 | Operador | Atiende conversaciones, prepara pedidos y solicita confirmación al cliente antes de asignar. |
 | Motorizado | Usa únicamente la PWA con su cuenta, abre jornada, registra combustible, acepta pedidos, comparte ubicación durante el servicio y entrega con OTP. |
 
 ## Parte 1 Configuración única de la plataforma
 
-Estos pasos los realiza DevTesters **una sola vez** antes de abrir Gestión Delivery a múltiples negocios. Cada empresa nueva no debe crear otra aplicación Meta ni recibir secretos técnicos.
+Estos pasos los realiza DevTesters **una sola vez** antes de abrir Gestión Delivery a múltiples negocios. Cada empresa nueva solo crea su cuenta y escanea su QR; no configura servidores ni variables.
 
 1. Publicar Gestión Delivery en un dominio HTTPS, por ejemplo `https://app.tudominio.com`.
 2. Configurar Supabase cloud y las variables de entorno de producción.
-3. Crear el portfolio comercial de DevTesters en Meta Business Suite.
-4. Crear la aplicación de Meta for Developers con el caso de uso **Conectarte con los clientes a través de WhatsApp**.
-5. Configurar Meta Embedded Signup/Facebook Login for Business, el dominio HTTPS y el webhook `https://app.tudominio.com/api/whatsapp/webhook`.
-6. Guardar los valores técnicos solo en el servidor: App ID, App Secret, Configuration ID de Embedded Signup, versión Graph, verify token y clave de cifrado. Son valores únicos de la plataforma, no se crean por negocio.
-7. Cambiar `WHATSAPP_PROVIDER=meta` en producción y probar el webhook con un número de prueba.
-8. Dejar la app de Meta en el estado y con los permisos que Meta solicite para operar con negocios reales.
+3. Desplegar el gateway de WhatsApp en un contenedor permanente con volumen persistente.
+4. Generar `WHATSAPP_GATEWAY_TOKEN` y `WHATSAPP_GATEWAY_WEBHOOK_SECRET` diferentes con `openssl rand -hex 32`.
+5. Guardar esos secretos solo en Vercel y en el host del gateway.
+6. Configurar el gateway para enviar eventos a `https://app.tudominio.com/api/whatsapp/gateway/webhook`.
+7. Probar dos empresas con dos números distintos y confirmar que las conversaciones quedan separadas.
 
-La instalación técnica detallada está en [OPERACION_E_INSTALACION.md](./OPERACION_E_INSTALACION.md) y la guía de Meta en [WHATSAPP_EMBEDDED_SIGNUP.md](./WHATSAPP_EMBEDDED_SIGNUP.md).
+La instalación técnica detallada está en [OPERACION_E_INSTALACION.md](./OPERACION_E_INSTALACION.md). Meta Cloud API queda disponible como integración oficial opcional en [WHATSAPP_EMBEDDED_SIGNUP.md](./WHATSAPP_EMBEDDED_SIGNUP.md).
 
 ## Parte 2 Crear la empresa en Gestión Delivery
 
@@ -59,7 +58,7 @@ El asistente inicial tiene tres pasos.
 
 1. **Información:** confirma el nombre, ciudad y teléfono comercial. La moneda inicial es córdobas nicaragüenses (C$).
 2. **Tarifas:** revisa las zonas iniciales y ajusta la gestión base para mandados y compras.
-3. **WhatsApp Business:** pulsa **Preparar conexión** y luego **Crear empresa e ir al panel**. El número se conectará desde Configuración después de entrar al panel.
+3. **WhatsApp Business:** pulsa **Entendido, continuar** y luego **Crear empresa y escanear QR**. El sistema abre Configuración para vincular el número.
 
 ## Parte 3 Configurar la operación antes del primer pedido
 
@@ -101,19 +100,17 @@ Nunca compartas la cuenta del administrador con un motorizado.
 
 ## Parte 4 Conectar el WhatsApp Business de cada negocio
 
-Este paso lo realiza el dueño administrador del negocio desde su panel. Necesita iniciar la ventana de Meta con el perfil que tiene control sobre su portfolio comercial y su número Business.
+Este paso lo realiza el dueño administrador del negocio desde su panel y con el teléfono donde funciona WhatsApp Business.
 
 1. Entra al panel web y abre **Configuración → WhatsApp Business**.
-2. Pulsa **Abrir conexión Meta**.
-3. En la ventana oficial de Meta, inicia sesión con el perfil administrador del negocio, no con una cuenta de un negocio ajeno.
-4. Selecciona o crea el portfolio comercial correspondiente al negocio.
-5. Selecciona o registra el número de WhatsApp Business. Meta puede solicitar un código SMS o llamada para validar el número.
-6. Acepta los permisos de mensajería necesarios y finaliza el flujo de Meta. Gestión Delivery registra el teléfono, crea su PIN técnico, guarda el token cifrado y activa el webhook automáticamente.
-7. Vuelve a Gestión Delivery y confirma que el estado indique **Canal conectado**. Si Meta interrumpió una operación, pulsa **Completar automáticamente**; no copies credenciales ni identificadores.
-8. Envía un WhatsApp de prueba desde otro teléfono. El mensaje debe aparecer en **Conversaciones**.
-9. Responde desde la bandeja para confirmar el envío saliente.
+2. Pulsa **Generar código QR**.
+3. En el teléfono abre **WhatsApp Business → Dispositivos vinculados → Vincular un dispositivo**.
+4. Escanea el QR que aparece en Gestión Delivery.
+5. Espera a que el panel muestre **WhatsApp conectado** y el número vinculado.
+6. Envía un WhatsApp de prueba desde otro teléfono. El mensaje debe aparecer en **Conversaciones**.
+7. Responde desde la bandeja para confirmar el envío saliente.
 
-El QR, código o verificación pertenece a Meta. Gestión Delivery no almacena una sesión de WhatsApp Web ni pide al negocio que comparta sus tokens.
+Cada empresa tiene su propia sesión separada. Si WhatsApp cierra un dispositivo vinculado, el dueño deberá generar y escanear un QR nuevo. Este mecanismo utiliza una sesión de WhatsApp Web y no la API oficial de Meta; por eso el negocio debe conocer y aceptar ese riesgo operativo.
 
 ## Parte 5 Operación diaria
 
@@ -180,13 +177,13 @@ Antes de iniciar operaciones reales, el dueño debe completar esta prueba:
 
 | Situación | Qué revisar |
 | --- | --- |
-| El botón de Meta no abre | El administrador de plataforma debe revisar el dominio HTTPS, Meta App ID, Configuration ID y versión Graph. |
-| Meta no muestra el número | Inicia sesión con el perfil que tiene acceso total al portfolio y al WhatsApp Business del negocio. No selecciones una empresa ajena. |
-| No llegan mensajes a Conversaciones | Confirma que el canal está conectado, que el webhook está verificado y que el número de prueba escribió al número exacto conectado. |
+| El QR no aparece | Revisa que el gateway esté activo, accesible desde Next.js y tenga los mismos secretos configurados. |
+| El QR vence | Pulsa **Generar nuevo QR** y vuelve a escanearlo desde Dispositivos vinculados. |
+| No llegan mensajes a Conversaciones | Confirma que el canal esté conectado, el webhook firmado llegue al dominio y el número de prueba escribió al número exacto vinculado. |
 | El motorizado no puede iniciar jornada | Revisa invitación activada, vehículo activo, mantenimiento no vencido y que no tenga otra jornada abierta. |
 | No aparece ubicación en el mapa | El motorizado debe aceptar el pedido y conceder ubicación a la PWA. Revisa además la clave y APIs de Google Maps configuradas por la plataforma. |
-| No se puede terminar el pedido | Verifica el OTP vigente con el administrador; no se usa el código de Meta ni el código SMS del número. |
+| No se puede terminar el pedido | Verifica el OTP vigente con el administrador; no se usa ningún código de WhatsApp. |
 
 ## Regla de oro de seguridad
 
-Cada negocio administra únicamente su empresa y su número. Los propietarios no deben compartir cuentas administrativas; los motorizados usan invitaciones individuales; y las claves, tokens y códigos de Meta permanecen en el servidor o en la ventana oficial de Meta.
+Cada negocio administra únicamente su empresa y su número. Los propietarios no comparten cuentas administrativas; los motorizados usan invitaciones individuales; y los secretos del gateway permanecen únicamente en los servidores.

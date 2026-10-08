@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
     if (orderUpdate.error) throw orderUpdate.error;
     if (driverUpdate.error) throw driverUpdate.error;
     if (eventInsert.error) throw eventInsert.error;
-    return Response.json({ status: "to_merchant" });
+    return Response.json({ status: "to_merchant", message: "Servicio aceptado. Iniciamos el seguimiento hacia el comercio." });
   } catch (error) {
     return apiErrorResponse(error);
   }

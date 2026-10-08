@@ -19,7 +19,7 @@ const initialInfo: CompanyInfo = { displayName: "", city: "Granada, Nicaragua", 
 export function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [info, setInfo] = useState<CompanyInfo>(initialInfo);
-  const [preparedForMeta, setPreparedForMeta] = useState(false);
+  const [readyForWhatsApp, setReadyForWhatsApp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -60,7 +60,7 @@ export function OnboardingScreen() {
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No fue posible crear la empresa.");
       window.sessionStorage.removeItem("delivery-onboarding");
-      router.replace("/admin");
+      router.replace("/admin/configuracion");
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible crear la empresa.");
@@ -101,14 +101,14 @@ export function OnboardingScreen() {
         ) : (
           <div className="onboarding-content whatsapp-onboarding">
             <span className="auth-icon"><WhatsappLogo size={26} weight="fill" /></span>
-            <h1>Prepara WhatsApp Business</h1>
-            <p>Cuando finalices se creará tu canal. La vinculación real usa el flujo oficial de Meta; nunca almacenamos una sesión de WhatsApp Web.</p>
+            <h1>Conecta WhatsApp Business</h1>
+            <p>Al crear la empresa irás directamente a Configuración para escanear el QR del número que atenderá a tus clientes.</p>
             <div className="qr-connect-card">
               <div className="qr-placeholder"><QrCode size={110} weight="regular" /></div>
               <div>
-                <h3>{preparedForMeta ? "Canal listo para configurar" : "Conexión oficial por Meta"}</h3>
-                <p>{preparedForMeta ? "Desde Configuración conectarás el número de WhatsApp Business con las credenciales de tu aplicación Meta." : "La cuenta se crea primero; después el administrador inicia la vinculación oficial con su número Business."}</p>
-                {preparedForMeta ? <span className="connected-copy"><CheckCircle size={18} weight="fill" /> Configuración pendiente de Meta</span> : <button className="button button-secondary" onClick={() => setPreparedForMeta(true)} type="button">Preparar conexión</button>}
+                <h3>{readyForWhatsApp ? "Listo para escanear" : "Vinculación por código QR"}</h3>
+                <p>{readyForWhatsApp ? "Crearemos la empresa y te mostraremos el QR. No tendrás que copiar tokens ni identificadores." : "Necesitarás el teléfono donde está instalado WhatsApp Business para abrir Dispositivos vinculados."}</p>
+                {readyForWhatsApp ? <span className="connected-copy"><CheckCircle size={18} weight="fill" /> El siguiente paso mostrará el QR</span> : <button className="button button-secondary" onClick={() => setReadyForWhatsApp(true)} type="button">Entendido, continuar</button>}
               </div>
             </div>
           </div>
@@ -116,7 +116,7 @@ export function OnboardingScreen() {
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="onboarding-actions">
           <button type="button" className="button button-secondary" disabled={step === 0 || saving} onClick={() => { setError(null); setStep((current) => current - 1); }}>Atrás</button>
-          <button type="button" className="button button-primary" disabled={saving} onClick={() => last ? finish() : goForward()}>{saving ? "Creando empresa…" : last ? "Crear empresa e ir al panel" : "Continuar"}<ArrowRight size={18} weight="bold" /></button>
+          <button type="button" className="button button-primary" disabled={saving} onClick={() => last ? finish() : goForward()}>{saving ? "Creando empresa…" : last ? "Crear empresa y escanear QR" : "Continuar"}<ArrowRight size={18} weight="bold" /></button>
         </div>
       </section>
     </main>

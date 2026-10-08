@@ -20,22 +20,46 @@ export async function POST(request: Request) {
       .select("id")
       .single();
     if (customerError) throw customerError;
-    const { data: conversation, error: conversationError } = await admin.from("conversations").insert({
-      company_id: context.companyId,
-      customer_id: customer.id,
-      status: "open",
-      last_message_at: new Date().toISOString(),
-    }).select("id").single();
-    if (conversationError) throw conversationError;
+    const now = new Date().toISOString();
+    const { data: existingConversation, error: existingConversationError } = await admin
+      .from("conversations")
+      .select("id")
+      .eq("company_id", context.companyId)
+      .eq("customer_id", customer.id)
+      .in("status", ["open", "waiting"])
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingConversationError) throw existingConversationError;
+
+    let conversationId = existingConversation?.id;
+    if (conversationId) {
+      const { error: conversationUpdateError } = await admin
+        .from("conversations")
+        .update({ status: "open", last_message_at: now })
+        .eq("id", conversationId)
+        .eq("company_id", context.companyId);
+      if (conversationUpdateError) throw conversationUpdateError;
+    } else {
+      const { data: conversation, error: conversationError } = await admin.from("conversations").insert({
+        company_id: context.companyId,
+        customer_id: customer.id,
+        status: "open",
+        last_message_at: now,
+      }).select("id").single();
+      if (conversationError) throw conversationError;
+      conversationId = conversation.id;
+    }
     const { error: messageError } = await admin.from("messages").insert({
       company_id: context.companyId,
-      conversation_id: conversation.id,
+      conversation_id: conversationId,
       direction: "inbound",
       sender_type: "customer",
       body: input.message,
+      sent_at: now,
     });
     if (messageError) throw messageError;
-    return Response.json({ id: conversation.id }, { status: 201 });
+    return Response.json({ id: conversationId, reused: Boolean(existingConversation) }, { status: existingConversation ? 200 : 201 });
   } catch (error) {
     return apiErrorResponse(error);
   }

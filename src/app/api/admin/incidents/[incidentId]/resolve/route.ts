@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ inc
     if (incidentError || !incident) throw new AppError("No encontramos esta incidencia.", 404);
     if (incident.status === "resolved") throw new AppError("Esta incidencia ya fue resuelta.");
     const now = new Date().toISOString();
-    const { error: updateError } = await admin.from("incidents").update({ status: "resolved", resolution, resolved_by: context.userId, resolved_at: now }).eq("id", incidentId);
+    const { error: updateError } = await admin.from("incidents").update({ status: "resolved", resolution, resolved_by: context.userId, resolved_at: now, updated_at: now }).eq("id", incidentId).eq("company_id", context.companyId);
     if (updateError) throw updateError;
     const { error: eventError } = await admin.from("incident_events").insert({ company_id: context.companyId, incident_id: incidentId, actor_id: context.userId, body: `Incidencia resuelta: ${resolution}` });
     if (eventError) throw eventError;

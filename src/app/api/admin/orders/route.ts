@@ -10,6 +10,7 @@ const schema = z.object({
   serviceType: z.enum(["delivery", "errand", "package"]),
   merchantName: z.string().trim().max(160).optional(),
   merchantAddress: z.string().trim().max(300).optional(),
+  pickupNotes: z.string().trim().max(1000).optional(),
   deliveryAddress: z.string().trim().min(5).max(300),
   deliveryReference: z.string().trim().max(300).optional(),
   zoneId: z.string().uuid(),
@@ -18,6 +19,13 @@ const schema = z.object({
   productAmount: z.coerce.number().min(0).max(100000),
   managementFee: z.coerce.number().min(0).max(100000),
   amountReceived: z.coerce.number().min(0).max(100000).nullable().optional(),
+}).superRefine((input, refinement) => {
+  if (!input.merchantName) {
+    refinement.addIssue({ code: "custom", path: ["merchantName"], message: "Indica el comercio o lugar de recogida." });
+  }
+  if (input.serviceType === "errand" && !input.pickupNotes) {
+    refinement.addIssue({ code: "custom", path: ["pickupNotes"], message: "Indica qué debe comprar el motorizado." });
+  }
 });
 
 function nextOrderNumber() {
@@ -49,6 +57,18 @@ export async function POST(request: Request) {
         .single();
       if (error || !conversation) throw new AppError("La conversación seleccionada no pertenece a tu empresa.", 404);
       customerId = conversation.customer_id;
+
+      const { data: activeOrder, error: activeOrderError } = await admin
+        .from("orders")
+        .select("id, order_number")
+        .eq("company_id", context.companyId)
+        .eq("conversation_id", input.conversationId)
+        .not("status", "in", "(delivered,cancelled)")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (activeOrderError) throw activeOrderError;
+      if (activeOrder) throw new AppError(`Esta conversación ya tiene el pedido activo ${activeOrder.order_number}.`, 409);
     } else {
       if (!input.customerName || !input.customerPhone) throw new AppError("Indica el nombre y teléfono del cliente.");
       const { data: customer, error } = await admin.from("customers")
@@ -59,6 +79,11 @@ export async function POST(request: Request) {
       customerId = customer.id;
     }
 
+    const total = input.productAmount + input.managementFee + zone.delivery_fee;
+    const amountReceived = input.paymentMethod === "cash" ? input.amountReceived ?? null : null;
+    if (amountReceived !== null && amountReceived > 0 && amountReceived < total) {
+      throw new AppError("El monto con el que paga el cliente no puede ser menor que el total.");
+    }
     const { data: address, error: addressError } = await admin.from("customer_addresses").insert({
       company_id: context.companyId,
       customer_id: customerId,
@@ -67,8 +92,6 @@ export async function POST(request: Request) {
       zone_id: zone.id,
     }).select("id").single();
     if (addressError) throw addressError;
-    const total = input.productAmount + input.managementFee + zone.delivery_fee;
-    const amountReceived = input.paymentMethod === "cash" ? input.amountReceived ?? null : null;
     const { data: order, error: orderError } = await admin.from("orders").insert({
       company_id: context.companyId,
       order_number: nextOrderNumber(),
@@ -78,6 +101,7 @@ export async function POST(request: Request) {
       service_type: input.serviceType,
       merchant_name: input.merchantName || null,
       merchant_address: input.merchantAddress || null,
+      pickup_notes: input.pickupNotes || null,
       delivery_address: input.deliveryAddress,
       delivery_reference: input.deliveryReference || null,
       zone_id: zone.id,
@@ -93,6 +117,7 @@ export async function POST(request: Request) {
       created_by: context.userId,
     }).select("id, order_number, total_amount").single();
     if (orderError) throw orderError;
+    const warnings: string[] = [];
     const { error: eventError } = await admin.from("order_status_events").insert({
       company_id: context.companyId,
       order_id: order.id,
@@ -102,8 +127,16 @@ export async function POST(request: Request) {
       actor_type: context.role,
       note: "Pedido creado desde operaciones; espera confirmación del cliente.",
     });
-    if (eventError) throw eventError;
-    return Response.json({ id: order.id, number: order.order_number, total: order.total_amount }, { status: 201 });
+    if (eventError) warnings.push("No se pudo registrar el evento de auditoría.");
+    if (input.conversationId) {
+      const { error: conversationError } = await admin
+        .from("conversations")
+        .update({ status: "waiting", last_message_at: new Date().toISOString() })
+        .eq("id", input.conversationId)
+        .eq("company_id", context.companyId);
+      if (conversationError) warnings.push("No se pudo actualizar el estado de la conversación.");
+    }
+    return Response.json({ id: order.id, number: order.order_number, total: order.total_amount, warnings }, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error);
   }

@@ -1,6 +1,6 @@
-# Conexión oficial de WhatsApp Business
+# Conexión oficial opcional de WhatsApp Business
 
-La plataforma usa **Meta Embedded Signup** para que cada administrador conecte su propia cuenta y número de WhatsApp Business. El QR o verificación se muestra dentro del diálogo de Meta; no se genera ni se almacena una sesión de WhatsApp Web.
+El flujo predeterminado de la plataforma es el gateway QR documentado en `OPERACION_E_INSTALACION.md`. Esta guía conserva **Meta Embedded Signup** como alternativa oficial para una migración futura. Si se activa, cada administrador conecta su cuenta y número de WhatsApp Business dentro del diálogo de Meta y el servidor cifra sus credenciales.
 
 ## Preparación en Meta
 

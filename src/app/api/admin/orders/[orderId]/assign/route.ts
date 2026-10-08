@@ -21,7 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
     if (driverResult.error || !driverResult.data) throw new AppError("No encontramos este motorizado.", 404);
     const order = orderResult.data;
     const driver = driverResult.data;
-    if (order.status !== "pending_assignment") throw new AppError("El pedido debe estar confirmado antes de asignarlo.");
+    if (!["pending_assignment", "confirmed"].includes(order.status)) throw new AppError("El pedido debe estar confirmado antes de asignarlo.");
     if (order.payment_method === "bank_transfer" && order.transfer_status !== "validated") throw new AppError("Primero valida la transferencia del cliente.");
     if (driver.invite_status !== "activated" || !driver.is_available || !shiftResult.data) throw new AppError("El motorizado debe tener una cuenta activada y una jornada abierta.");
     const { data: vehicle, error: vehicleError } = await admin.from("vehicles").select("status, current_odometer_km, next_maintenance_km")
@@ -39,22 +39,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
     const { error: unassignError } = await admin.from("order_assignments").update({ unassigned_at: new Date().toISOString() })
       .eq("order_id", orderId).eq("company_id", context.companyId).is("unassigned_at", null);
     if (unassignError) throw unassignError;
-    const { error: orderError } = await admin.from("orders").update({
+    const { data: updatedOrder, error: orderError } = await admin.from("orders").update({
       status: "assigned",
       driver_id: input.driverId,
       assigned_at: new Date().toISOString(),
       delivery_otp_hash: otp.hash,
       delivery_otp_expires_at: expiresAt,
       delivery_otp_verified_at: null,
-    }).eq("id", orderId).eq("company_id", context.companyId);
+    }).eq("id", orderId).eq("company_id", context.companyId).in("status", ["pending_assignment", "confirmed"]).select("id").maybeSingle();
     if (orderError) throw orderError;
+    if (!updatedOrder) throw new AppError("El pedido cambió de estado. Actualiza la página antes de asignarlo.", 409);
+    const warnings: string[] = [];
     const { error: assignmentError } = await admin.from("order_assignments").insert({
       company_id: context.companyId,
       order_id: orderId,
       driver_id: input.driverId,
       assigned_by: context.userId,
     });
-    if (assignmentError) throw assignmentError;
+    if (assignmentError) warnings.push("La asignación quedó aplicada, pero no se pudo registrar su historial.");
     const { error: eventError } = await admin.from("order_status_events").insert({
       company_id: context.companyId,
       order_id: orderId,
@@ -64,7 +66,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
       actor_type: context.role,
       note: "Pedido enviado a la PWA del motorizado. Espera su aceptación.",
     });
-    if (eventError) throw eventError;
+    if (eventError) warnings.push("No se pudo registrar el evento de auditoría.");
     const { error: notificationError } = await admin.from("notifications").insert({
       company_id: context.companyId,
       user_id: driver.user_id,
@@ -74,8 +76,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
       body: "Abre la PWA y confirma si puedes atenderlo.",
       payload: { orderId },
     });
-    if (notificationError) throw notificationError;
-    return Response.json({ otpCode: otp.code, expiresAt });
+    if (notificationError) warnings.push("El pedido fue asignado, pero la notificación interna quedó pendiente.");
+    return Response.json({ status: "assigned", driverId: input.driverId, otpCode: otp.code, expiresAt, warnings });
   } catch (error) {
     return apiErrorResponse(error);
   }

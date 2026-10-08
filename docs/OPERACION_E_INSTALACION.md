@@ -68,36 +68,39 @@ Copia `.env.example` a `.env.local`. Nunca subas `.env.local` ni secretos a Git.
 
 - `.env.local` debe pertenecer solo al usuario que opera el servidor (`chmod 600 .env.local` en macOS/Linux). La instalación local ya queda con ese permiso.
 - Todo archivo `.env*` está bloqueado para Git y para la imagen Docker; `.env.example` contiene únicamente marcadores sin valor.
-- Solo los valores con prefijo `NEXT_PUBLIC_` llegan al navegador. **Nunca** pongas un token de Meta, `SUPABASE_SERVICE_ROLE_KEY`, secreto de la app o clave de cifrado con ese prefijo.
-- Los tokens de cada negocio se cifran con AES-256-GCM antes de guardarse en la base. La clave que permite descifrarlos se queda únicamente en `.env.local`/el servidor.
+- Solo los valores con prefijo `NEXT_PUBLIC_` llegan al navegador. **Nunca** pongas el token del gateway, `SUPABASE_SERVICE_ROLE_KEY`, secretos de Meta o claves de cifrado con ese prefijo.
+- El token y la firma del gateway permanecen en el servidor. Las credenciales de los dispositivos vinculados se guardan únicamente en su volumen persistente, aisladas por `company_id`.
 - Docker publica el panel solo en `127.0.0.1:3000`. Para una prueba de webhook usa un túnel HTTPS dirigido a ese puerto; no abras el panel directamente a la red local.
-- Si un secreto aparece en un chat, captura, repositorio o correo, revócalo en Meta/Supabase y reemplázalo; no basta con borrarlo del mensaje.
+- Si un secreto aparece en un chat, captura, repositorio o correo, revócalo y reemplázalo; no basta con borrarlo del mensaje.
 
 | Variable | Cuándo se usa |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Siempre. Supabase local ahora; valores del proyecto Supabase al pasar a cloud. |
 | `SUPABASE_SERVER_URL` | Opcional, solo para el servidor Next.js dentro de Docker. |
-| `WHATSAPP_PROVIDER=mock` | Desarrollo local; permite probar envíos sin mandar mensajes reales. |
-| `WHATSAPP_PROVIDER=meta` | Producción o pruebas reales con Meta Cloud API. |
+| `WHATSAPP_PROVIDER=qr_gateway` | Flujo predeterminado: cada empresa vincula su número por QR. |
+| `WHATSAPP_GATEWAY_URL` | URL interna o HTTPS del contenedor persistente del gateway. |
+| `WHATSAPP_GATEWAY_TOKEN` | Token aleatorio compartido solo entre Next.js y el gateway. Genera con `openssl rand -hex 32`. |
+| `WHATSAPP_GATEWAY_WEBHOOK_SECRET` | Secreto independiente para firmar webhooks del gateway. Genera con `openssl rand -hex 32`. |
+| `WHATSAPP_PROVIDER=mock` | Desarrollo aislado; permite probar envíos sin mandar mensajes reales. |
 | `META_APP_ID`, `META_EMBEDDED_SIGNUP_CONFIG_ID`, `META_GRAPH_API_VERSION` | Habilitan el botón de Meta Embedded Signup. |
 | `META_APP_SECRET`, `META_WHATSAPP_APP_SECRET`, `META_WHATSAPP_VERIFY_TOKEN` | Intercambio de código y verificación segura del webhook. |
 | `WHATSAPP_TOKEN_ENCRYPTION_KEY` | Clave Base64 de 32 bytes para cifrar tokens por empresa. Genera una sola vez con `openssl rand -base64 32`. |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Mapa y Directions de Google. Restringe la llave por dominio. |
 
-## Conectar un número real de WhatsApp Business
+## Conectar un número real de WhatsApp Business por QR
 
-La plataforma usa el flujo oficial **Meta Embedded Signup**. No usa ni almacena QR/sesiones de WhatsApp Web.
+1. Inicia Next.js y el gateway con `docker compose up --build`. El volumen `whatsapp_sessions` conserva las sesiones aunque reinicies los contenedores.
+2. Como dueño, entra a **Configuración → WhatsApp Business** y pulsa **Generar código QR**.
+3. En el teléfono del negocio abre **WhatsApp Business → Dispositivos vinculados → Vincular un dispositivo**.
+4. Escanea el QR. El panel mostrará el número conectado y empezará a recibir mensajes en **Conversaciones**.
+5. Repite el proceso dentro de cada empresa: cada `company_id` mantiene su propio número y sesión.
+6. Envía un mensaje desde otro teléfono y responde desde la bandeja para validar entrada y salida.
 
-1. Despliega la aplicación en un dominio HTTPS público. Meta no valida un webhook `localhost`.
-2. Crea una app de Meta, añade WhatsApp Business Platform y habilita Embedded Signup/Facebook Login.
-3. En Meta, agrega el dominio de la aplicación y registra `https://TU-DOMINIO/api/whatsapp/webhook` como callback de webhook.
-4. Pon el mismo secreto elegido en Meta y en `META_WHATSAPP_VERIFY_TOKEN`.
-5. Completa en `.env.local` las variables de Meta, cambia `WHATSAPP_PROVIDER=meta` y reinicia la web.
-6. Como dueño, entra a **Configuración → WhatsApp Business → Abrir conexión Meta**.
-7. Termina la verificación oficial/QR de Meta. El código se intercambia en el servidor y el token queda cifrado por empresa.
-8. Envía un mensaje al número para comprobar que aparece en **Conversaciones**. Responde desde la bandeja para probar el envío saliente.
+El gateway QR usa el protocolo de dispositivo vinculado de WhatsApp Web y no es una integración oficial de Meta Cloud API. Puede requerir volver a escanear si WhatsApp cierra la sesión y su uso debe evaluarse frente a las condiciones de WhatsApp. La integración oficial de Meta permanece en el código como alternativa opcional; su guía está en [WHATSAPP_EMBEDDED_SIGNUP.md](./WHATSAPP_EMBEDDED_SIGNUP.md).
 
-La guía ampliada de variables y webhook está en [WHATSAPP_EMBEDDED_SIGNUP.md](./WHATSAPP_EMBEDDED_SIGNUP.md).
+### Producción
+
+La web puede vivir en Vercel, pero el gateway debe vivir en Railway, Render, Fly.io, un VPS u otro servicio que mantenga un contenedor activo y un disco persistente. Configura en ambos servicios el mismo `WHATSAPP_GATEWAY_TOKEN` y `WHATSAPP_GATEWAY_WEBHOOK_SECRET`; en el gateway usa `WHATSAPP_APP_WEBHOOK_URL=https://TU-DOMINIO/api/whatsapp/gateway/webhook`. Nunca publiques el puerto del gateway sin HTTPS y control de acceso.
 
 ## Google Maps y GPS
 
@@ -136,8 +139,9 @@ Antes de instalarla, el administrador debe crear el motorizado en **Motorizados*
 
 - [ ] Migraciones aplicadas en Supabase cloud y claves de producción configuradas.
 - [ ] Dominio HTTPS configurado.
-- [ ] Callback de Meta y token de webhook verificados.
-- [ ] Embedded Signup probado con una cuenta/número de prueba.
+- [ ] Gateway QR desplegado con volumen persistente y secretos distintos.
+- [ ] Webhook del gateway apunta al dominio público y acepta eventos firmados.
+- [ ] Dos empresas de prueba conectan números distintos sin mezclar mensajes.
 - [ ] Google Maps y Directions API habilitadas con clave restringida al dominio.
 - [ ] Primer administrador, vehículo y motorizado creados.
 - [ ] Flujo completo probado: conversación → pedido → turno → aceptación → GPS → OTP → cierre de jornada.

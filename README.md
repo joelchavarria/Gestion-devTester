@@ -20,11 +20,12 @@ Abre `http://localhost:3000/registro` para crear la primera empresa. Para usar D
 
 ## Despliegue en Vercel
 
-El repositorio se puede importar directamente en Vercel; Next.js se detecta automáticamente. Antes de un despliegue real se necesita una base de datos Supabase/PosgreSQL accesible desde Internet y se agregan las variables indicadas en `.env.example` desde **Vercel → Settings → Environment Variables**. No copies secretos al código, al navegador ni al repositorio. La guía de seguridad y la conexión de Meta están en [la documentación operativa](docs/OPERACION_E_INSTALACION.md).
+El repositorio se puede importar directamente en Vercel; Next.js se detecta automáticamente. Antes de un despliegue real se necesita una base de datos Supabase/PostgreSQL accesible desde Internet y se agregan las variables indicadas en `.env.example` desde **Vercel → Settings → Environment Variables**. El gateway QR de WhatsApp debe ejecutarse como un contenedor permanente con disco persistente; Vercel sirve la web, pero no conserva esa sesión. No copies secretos al código, al navegador ni al repositorio. La instalación completa está en [la documentación operativa](docs/OPERACION_E_INSTALACION.md).
 
 ## Principios
 
 - Cada empresa queda aislada por `company_id` y RLS.
 - Los clientes finales escriben por WhatsApp; no requieren una PWA.
 - Motorizados tienen cuenta y PWA independiente.
-- Meta Embedded Signup conecta WhatsApp Business sin sesiones de WhatsApp Web.
+- Cada negocio vincula su propio WhatsApp Business por QR y conserva una sesión aislada.
+- Meta Cloud API se mantiene como integración oficial opcional para una migración futura.

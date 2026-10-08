@@ -8,6 +8,8 @@ const schema = z.object({
   email: z.string().trim().email().max(160),
   phone: z.string().trim().min(8).max(24),
   licenseNumber: z.string().trim().min(3).max(80),
+  identityDocument: z.string().trim().max(80).optional(),
+  emergencyContact: z.string().trim().max(120).optional(),
 });
 
 export async function POST(request: Request) {
@@ -19,7 +21,11 @@ export async function POST(request: Request) {
     // This public bridge consumes Supabase's invite hash before /driver's auth guard runs.
     const redirectTo = new URL("/auth/accept-invite", request.url).toString();
     const { data: invitation, error: invitationError } = await admin.auth.admin.inviteUserByEmail(input.email, {
-      data: { full_name: input.fullName, phone: input.phone },
+      data: {
+        full_name: input.fullName,
+        phone: input.phone,
+        identity_document: input.identityDocument || null,
+      },
       redirectTo,
     });
     if (invitationError || !invitation.user) throw new Error(invitationError?.message ?? "No fue posible preparar la invitación.");
@@ -38,6 +44,7 @@ export async function POST(request: Request) {
       user_id: userId,
       member_id: member.id,
       license_number: input.licenseNumber,
+      emergency_contact: input.emergencyContact || null,
       invite_status: "pending",
     });
     if (driverError) throw driverError;
@@ -47,7 +54,7 @@ export async function POST(request: Request) {
       action: "driver.invited",
       entity_type: "driver_profile",
       entity_id: null,
-      after_data: { email: input.email, fullName: input.fullName },
+      after_data: { email: input.email, fullName: input.fullName, phone: input.phone },
     });
     return NextResponse.json({ message: "Invitación creada y enviada al correo del motorizado." }, { status: 201 });
   } catch (error) {

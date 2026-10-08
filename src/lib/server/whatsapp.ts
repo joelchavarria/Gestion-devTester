@@ -1,5 +1,6 @@
 import { MetaCloudWhatsAppProvider } from "@/lib/whatsapp/meta-cloud";
 import { MockWhatsAppProvider } from "@/lib/whatsapp/mock";
+import { QrGatewayWhatsAppProvider } from "@/lib/whatsapp/qr-gateway";
 import { decryptWhatsAppSecret } from "@/lib/whatsapp/secrets";
 import type { IncomingWhatsAppMessage, WhatsAppProvider } from "@/lib/whatsapp/types";
 import { AppError } from "@/lib/server/context";
@@ -7,7 +8,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type AccountRow = {
   company_id: string;
-  provider: "meta_cloud" | "mock";
+  provider: "qr_gateway" | "meta_cloud" | "mock";
   phone_number_id: string | null;
   encrypted_access_token: string | null;
   connection_status: "disconnected" | "pending" | "connected" | "error";
@@ -19,7 +20,13 @@ function cleanPhone(phone: string) {
 }
 
 function providerForAccount(account: AccountRow): WhatsAppProvider {
-  if (process.env.WHATSAPP_PROVIDER !== "meta" || account.provider === "mock") return new MockWhatsAppProvider();
+  if (account.provider === "mock") return new MockWhatsAppProvider();
+  if (account.provider === "qr_gateway") {
+    if (account.connection_status !== "connected") {
+      throw new AppError("Escanea el QR de WhatsApp Business de esta empresa antes de enviar mensajes.", 409);
+    }
+    return new QrGatewayWhatsAppProvider(account.company_id);
+  }
   if (account.connection_status !== "connected" || !account.phone_number_id || !account.encrypted_access_token) {
     throw new AppError("Conecta el número de WhatsApp Business de esta empresa antes de enviar mensajes.", 409);
   }
@@ -49,17 +56,17 @@ export async function getCompanyWhatsAppProvider(companyId: string) {
 }
 
 /** Writes Meta messages into the correct tenant inbox. Repeated webhooks are idempotent. */
-export async function persistIncomingWhatsAppMessages(messages: IncomingWhatsAppMessage[]) {
+export async function persistIncomingWhatsAppMessages(messages: IncomingWhatsAppMessage[], gatewayCompanyId?: string) {
   const admin = createSupabaseAdminClient();
   let persisted = 0;
   for (const message of messages) {
-    if (!message.phoneNumberId) continue;
-    const { data: account, error: accountError } = await admin
-      .from("whatsapp_accounts")
+    if (!gatewayCompanyId && !message.phoneNumberId) continue;
+    const accountQuery = admin.from("whatsapp_accounts")
       .select("company_id, provider, phone_number_id, encrypted_access_token, connection_status, welcome_message")
-      .eq("phone_number_id", message.phoneNumberId)
-      .eq("connection_status", "connected")
-      .maybeSingle();
+      .eq("connection_status", "connected");
+    const { data: account, error: accountError } = gatewayCompanyId
+      ? await accountQuery.eq("company_id", gatewayCompanyId).eq("provider", "qr_gateway").maybeSingle()
+      : await accountQuery.eq("phone_number_id", message.phoneNumberId!).eq("provider", "meta_cloud").maybeSingle();
     if (accountError) throw accountError;
     if (!account) continue;
 

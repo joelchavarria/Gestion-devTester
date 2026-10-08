@@ -21,7 +21,7 @@ export type CompanySettings = {
 };
 
 export type WhatsAppChannel = {
-  provider: "meta_cloud" | "mock";
+  provider: "qr_gateway" | "meta_cloud" | "mock";
   connectionStatus: "disconnected" | "pending" | "connected" | "error";
   phoneNumber: string | null;
   welcomeMessage: string;

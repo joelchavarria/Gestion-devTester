@@ -3,13 +3,16 @@ services:
     build:
       context: .
       target: development
-    command: npm run dev -- -H 0.0.0.0
+    # Webpack dev mode avoids Turbopack cache corruption when the same checkout
+    # is validated by host-side build/typecheck processes.
+    command: npm run dev -- -H 0.0.0.0 --webpack
     env_file:
       - .env.local
     environment:
       # Browser code keeps NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321.
       # The container reaches the local Supabase API through this internal URL.
       SUPABASE_SERVER_URL: http://host.docker.internal:54321
+      WHATSAPP_GATEWAY_URL: http://whatsapp-gateway:3100
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -19,6 +22,25 @@ services:
     volumes:
       - .:/app
       - delivery_node_modules:/app/node_modules
+    depends_on:
+      - whatsapp-gateway
+
+  whatsapp-gateway:
+    build:
+      context: ./services/whatsapp-gateway
+    env_file:
+      - .env.local
+    environment:
+      WHATSAPP_APP_WEBHOOK_URL: http://delivery-web:3000/api/whatsapp/gateway/webhook
+      WHATSAPP_SESSION_DIR: /data/sessions
+    expose:
+      - "3100"
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - whatsapp_sessions:/data/sessions
+    restart: unless-stopped
 
 volumes:
   delivery_node_modules:
+  whatsapp_sessions:

@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
       const { error: cashError } = await admin.from("cash_drawer_transactions").insert(cashRows);
       if (cashError) throw cashError;
     }
-    return Response.json({ status: "delivered" });
+    return Response.json({ status: "delivered", message: "Entrega completada y OTP validado." });
   } catch (error) {
     return apiErrorResponse(error);
   }
