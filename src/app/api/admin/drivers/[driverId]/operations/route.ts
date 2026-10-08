@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ dri
     const { driverId } = await params;
     const context = await requireOwnerContext();
     const admin = createSupabaseAdminClient();
-    const { data: driver, error: driverError } = await admin.from("driver_profiles").select("id, invite_status")
+    const { data: driver, error: driverError } = await admin.from("driver_profiles").select("id, invite_status, assigned_vehicle_id")
       .eq("id", driverId).eq("company_id", context.companyId).single();
     if (driverError || !driver) throw new AppError("No encontramos este motorizado.", 404);
     if (driver.invite_status === "disabled") throw new AppError("El acceso de este motorizado está deshabilitado.");
@@ -46,6 +46,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ dri
     if (input.action === "start_shift") {
       if (openShift) throw new AppError("Este motorizado ya tiene una jornada abierta.");
       if (driver.invite_status !== "activated") throw new AppError("El motorizado debe activar su invitación antes de iniciar una jornada.");
+      if (driver.assigned_vehicle_id && driver.assigned_vehicle_id !== input.vehicleId) {
+        throw new AppError("Este motorizado ya tiene otro vehículo asignado. Libera esa asignación antes de cambiarlo.", 409);
+      }
       const { data: vehicle, error: vehicleError } = await admin.from("vehicles").select("*")
         .eq("id", input.vehicleId).eq("company_id", context.companyId).single();
       if (vehicleError || !vehicle) throw new AppError("No encontramos el vehículo seleccionado.", 404);
@@ -58,6 +61,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ dri
         .eq("company_id", context.companyId).eq("vehicle_id", vehicle.id).is("ended_at", null).maybeSingle();
       if (occupiedError) throw occupiedError;
       if (occupied) throw new AppError("Este vehículo ya está asignado a otra jornada.");
+      const { data: assignedToOther, error: assignmentError } = await admin.from("driver_profiles").select("id")
+        .eq("company_id", context.companyId).eq("assigned_vehicle_id", vehicle.id).neq("id", driver.id).maybeSingle();
+      if (assignmentError) throw assignmentError;
+      if (assignedToOther) throw new AppError("Este vehículo ya está reservado para otro motorizado.", 409);
+      if (!driver.assigned_vehicle_id) {
+        const { error: reserveError } = await admin.from("driver_profiles").update({ assigned_vehicle_id: vehicle.id, updated_at: new Date().toISOString() })
+          .eq("id", driver.id).eq("company_id", context.companyId).is("assigned_vehicle_id", null);
+        if (reserveError) throw reserveError;
+      }
       const { data: shift, error: createError } = await admin.from("driver_shifts").insert({
         company_id: context.companyId,
         driver_id: driver.id,

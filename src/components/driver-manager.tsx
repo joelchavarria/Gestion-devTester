@@ -2,10 +2,16 @@
 
 import { PwaInstallCard } from "@/components/pwa-install-card";
 import { Avatar, Badge } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { OperationalDriver } from "@/lib/operations/types";
-import { CalendarCheck, CheckCircle, EnvelopeSimple, GasPump, Gauge, Plus, SignIn, SignOut, UserPlus, Warning, X } from "@phosphor-icons/react";
+import { CalendarCheck, CheckCircle, EnvelopeSimple, GasPump, Gauge, Motorcycle, Plus, SignIn, SignOut, UserPlus, Warning } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 type FormMode = "register" | "invite" | null;
 type OperationMode = "start" | "fuel" | "close";
@@ -20,6 +26,8 @@ type AdminVehicle = {
   nextMaintenanceAt: number | null;
   remainingKm: number | null;
   occupied: boolean;
+  assignedDriverId: string | null;
+  openShiftDriverId: string | null;
 };
 
 const statusCopy: Record<OperationalDriver["status"], { label: string; tone: "green" | "blue" | "amber" | "red" | "neutral" }> = {
@@ -60,6 +68,7 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
           identityDocument: String(formData.get("identityDocument") ?? "") || undefined,
           licenseNumber: String(formData.get("licenseNumber") ?? ""),
           emergencyContact: String(formData.get("emergencyContact") ?? "") || undefined,
+          vehicleId: String(formData.get("vehicleId") ?? "") || undefined,
         }),
       });
       const payload = await response.json() as { message?: string; error?: string };
@@ -74,9 +83,7 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
     }
   }
 
-  async function openDriver(driver: OperationalDriver) {
-    setSelectedDriver(driver);
-    setOperationMode(driver.activeShift ? "fuel" : "start");
+  async function loadFleet() {
     setError(null);
     setLoadingVehicles(true);
     try {
@@ -87,11 +94,33 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
       setVehicles(fleet);
       const firstAvailable = fleet.find((vehicle) => vehicle.status === "active" && !vehicle.occupied && (vehicle.remainingKm === null || vehicle.remainingKm > 0));
       setSelectedVehicleId(firstAvailable?.id ?? "");
+      return fleet;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible consultar la flota.");
+      return [];
     } finally {
       setLoadingVehicles(false);
     }
+  }
+
+  async function openDriver(driver: OperationalDriver) {
+    setSelectedDriver(driver);
+    setOperationMode(driver.activeShift ? "fuel" : "start");
+    const fleet = await loadFleet();
+    if (driver.vehicle && !driver.activeShift) {
+      const assigned = fleet.find((vehicle) => vehicle.id === driver.vehicle?.id);
+      setSelectedVehicleId(assigned?.id ?? "");
+    }
+  }
+
+  async function openRegister() {
+    await loadFleet();
+    setMode("register");
+  }
+
+  async function openInvite() {
+    await loadFleet();
+    setMode("invite");
   }
 
   async function saveOperation(formData: FormData) {
@@ -147,7 +176,7 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
     <PwaInstallCard />
     <section className="drivers-command-bar panel">
       <div><span>OPERACIÓN DE EQUIPO</span><strong>Alta y control diario de motorizados</strong><small>Invitación individual, salida, combustible, kilometraje y regreso en un mismo flujo.</small></div>
-      <div><button className="button button-secondary" type="button" onClick={() => setMode("invite")}><EnvelopeSimple size={18} /> Enviar invitación</button><button className="button button-primary" type="button" onClick={() => setMode("register")}><Plus size={18} weight="bold" /> Registrar motorizado</button></div>
+      <div><button className="button button-secondary" type="button" onClick={() => { void openInvite(); }}><EnvelopeSimple size={18} /> Enviar invitación</button><button className="button button-primary" type="button" onClick={() => { void openRegister(); }}><Plus size={18} weight="bold" /> Registrar motorizado</button></div>
     </section>
     {notice ? <p className="form-notice driver-notice"><CheckCircle size={17} weight="fill" /> {notice}</p> : null}
     {error && !mode && !selectedDriver ? <p className="form-error driver-notice" role="alert">{error}</p> : null}
@@ -156,14 +185,53 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
       const state = statusCopy[driver.status];
       return <tr key={driver.id}><td><div className="table-person"><Avatar initials={driver.initials} tone={driver.status === "maintenance" ? "pink" : "mint"} /><span><strong>{driver.name}</strong><small>{driver.phone}</small></span></div></td><td><Badge tone={state.tone}>{state.label}</Badge></td><td>{driver.vehicle ? <><strong>{driver.vehicle.label}</strong><small>{driver.vehicle.plate}</small></> : <span className="muted">Sin vehículo</span>}</td><td>{driver.vehicle ? <span className="fuel-inline"><GasPump size={17} /> {driver.vehicle.fuelLevel}%</span> : <span className="muted">—</span>}</td><td>{driver.vehicle ? `${driver.vehicle.odometer.toLocaleString("es-NI")} km` : "—"}</td><td>{driver.deliveriesToday}</td><td><button className="table-action" type="button" disabled={driver.inviteStatus === "pending"} onClick={() => openDriver(driver)}>{driver.inviteStatus === "pending" ? "Esperando activación" : driver.activeShift ? "Gestionar jornada" : "Registrar salida"}</button></td></tr>;
     }) : <tr><td colSpan={7}><div className="empty-table">Aún no hay motorizados. Registra el primero para enviarle una invitación a la PWA.</div></td></tr>}</tbody></table></div></section>
-    {mode ? <DriverForm mode={mode} saving={saving} error={error} onClose={() => { setMode(null); setError(null); }} onSave={saveDriver} /> : null}
+    {mode ? <DriverForm mode={mode} vehicles={vehicles} loadingVehicles={loadingVehicles} saving={saving} error={error} onClose={() => { setMode(null); setError(null); }} onSave={saveDriver} /> : null}
     {selectedDriver ? <DriverOperationsDialog driver={selectedDriver} mode={operationMode} setMode={setOperationMode} vehicles={vehicles} selectedVehicle={selectedVehicle} selectedVehicleId={selectedVehicleId} setSelectedVehicleId={setSelectedVehicleId} loadingVehicles={loadingVehicles} saving={saving} error={error} onClose={() => { setSelectedDriver(null); setError(null); }} onSave={saveOperation} /> : null}
   </>;
 }
 
-function DriverForm({ mode, onClose, onSave, saving, error }: { mode: Exclude<FormMode, null>; onClose: () => void; onSave: (data: FormData) => Promise<void>; saving: boolean; error: string | null }) {
+function DriverForm({ mode, vehicles, loadingVehicles, onClose, onSave, saving, error }: { mode: Exclude<FormMode, null>; vehicles: AdminVehicle[]; loadingVehicles: boolean; onClose: () => void; onSave: (data: FormData) => Promise<void>; saving: boolean; error: string | null }) {
   const resend = mode === "invite";
-  return <div className="modal-backdrop" role="presentation"><dialog className="modal-card driver-modal" open aria-labelledby="driver-modal-title"><div className="modal-heading"><div><p>ACCESO PWA</p><h2 id="driver-modal-title">{resend ? "Invitar motorizado" : "Registrar motorizado"}</h2></div><button className="modal-close" onClick={onClose} type="button" aria-label="Cerrar"><X size={17} weight="bold" /></button></div><p className="modal-intro">Crea un perfil independiente. El motorizado recibirá un enlace seguro para activar su cuenta y entrar solamente a la PWA.</p><form className="modal-form" action={onSave}><div className="form-grid"><label>Nombre completo<input name="fullName" placeholder="Ej. Luis Rodríguez" autoComplete="name" required /></label><label>Teléfono WhatsApp<input name="phone" type="tel" placeholder="+505 8888 0000" autoComplete="tel" required /></label><label>Correo de invitación<input name="email" type="email" placeholder="motorizado@correo.com" autoComplete="email" required /></label><label>Documento de identidad<input name="identityDocument" placeholder="001-000000-0000A" /></label><label>Número de licencia<input name="licenseNumber" placeholder="N° de licencia" required /></label><label>Contacto de emergencia<input name="emergencyContact" type="tel" placeholder="+505 7777 0000" /></label></div><div className="invite-preview"><UserPlus size={20} weight="fill" /><span><strong>Invitación personal</strong><small>La cuenta queda vinculada al negocio, nunca a las credenciales del administrador.</small></span></div>{error ? <p className="form-error" role="alert">{error}</p> : null}<button className="button button-primary button-full" type="submit" disabled={saving}>{saving ? "Creando acceso…" : "Crear e invitar motorizado"}</button></form></dialog></div>;
+  const availableVehicles = vehicles.filter((vehicle) => vehicle.status === "active" && !vehicle.occupied && (vehicle.remainingKm === null || vehicle.remainingKm > 0));
+  const [vehicleId, setVehicleId] = useState(availableVehicles[0]?.id ?? "");
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <DialogContent className="max-h-[min(92vh,780px)] overflow-y-auto border-0 p-0 shadow-2xl sm:max-w-2xl">
+      <DialogHeader className="border-b border-slate-100 px-6 py-5 text-left">
+        <p className="text-[11px] font-extrabold tracking-[.14em] text-emerald-700">ACCESO PWA</p>
+        <DialogTitle className="text-2xl font-bold tracking-tight text-slate-950">{resend ? "Invitar motorizado" : "Registrar motorizado"}</DialogTitle>
+        <DialogDescription>Crea su acceso personal y reserva el vehículo que usará. El conductor no podrá cambiarlo ni escoger una unidad asignada a otra persona.</DialogDescription>
+      </DialogHeader>
+      <form action={onSave} className="grid gap-5 px-6 pb-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nombre completo"><Input className="h-10" name="fullName" placeholder="Ej. Luis Rodríguez" autoComplete="name" required /></Field>
+          <Field label="Teléfono WhatsApp"><Input className="h-10" name="phone" type="tel" placeholder="+505 8888 0000" autoComplete="tel" required /></Field>
+          <Field label="Correo de invitación"><Input className="h-10" name="email" type="email" placeholder="motorizado@correo.com" autoComplete="email" required /></Field>
+          <Field label="Documento de identidad"><Input className="h-10" name="identityDocument" placeholder="001-000000-0000A" /></Field>
+          <Field label="Número de licencia"><Input className="h-10" name="licenseNumber" placeholder="N° de licencia" required /></Field>
+          <Field label="Contacto de emergencia"><Input className="h-10" name="emergencyContact" type="tel" placeholder="+505 7777 0000" /></Field>
+        </div>
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+          <div className="mb-3 flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm"><Motorcycle size={20} weight="fill" /></span><div><strong className="block text-sm text-slate-950">Vehículo reservado</strong><small>Solo aparecen unidades operativas y sin otro motorizado asignado.</small></div></div>
+          <input type="hidden" name="vehicleId" value={vehicleId} />
+          <Select value={vehicleId} onValueChange={(value) => setVehicleId(value ?? "")} disabled={loadingVehicles || !availableVehicles.length}>
+            <SelectTrigger className="h-11 w-full bg-white"><SelectValue placeholder={loadingVehicles ? "Consultando flota…" : "Selecciona un vehículo"} /></SelectTrigger>
+            <SelectContent>{availableVehicles.map((vehicle) => <SelectItem value={vehicle.id} key={vehicle.id}>{vehicle.code} · {vehicle.label} · {vehicle.plate}</SelectItem>)}</SelectContent>
+          </Select>
+          {!loadingVehicles && !availableVehicles.length ? <p className="mt-2 text-xs font-medium text-amber-700">No hay vehículos libres. Registra una unidad o libera la asignación actual.</p> : null}
+        </div>
+        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-600"><UserPlus className="mt-0.5 shrink-0 text-emerald-700" size={19} weight="fill" /><p className="text-xs leading-5"><strong className="block text-slate-900">Invitación personal y segura</strong>La cuenta queda vinculada al negocio, nunca a las credenciales del administrador.</p></div>
+        {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">{error}</p> : null}
+        <DialogFooter className="mx-0 mb-0 -mt-1 bg-transparent px-0 pb-0">
+          <Button type="button" variant="outline" size="lg" onClick={onClose}>Cancelar</Button>
+          <Button className="bg-emerald-700 px-5 hover:bg-emerald-800" size="lg" type="submit" disabled={saving || loadingVehicles || !vehicleId}>{saving ? "Creando acceso…" : "Crear, asignar e invitar"}</Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>;
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="grid gap-2"><Label className="text-xs font-semibold text-slate-700">{label}</Label>{children}</div>;
 }
 
 function DriverOperationsDialog({ driver, mode, setMode, vehicles, selectedVehicle, selectedVehicleId, setSelectedVehicleId, loadingVehicles, saving, error, onClose, onSave }: {
@@ -181,18 +249,60 @@ function DriverOperationsDialog({ driver, mode, setMode, vehicles, selectedVehic
   onSave: (data: FormData) => Promise<void>;
 }) {
   const currentVehicle = driver.vehicle;
-  return <div className="modal-backdrop" role="presentation"><dialog className="modal-card driver-modal" open aria-labelledby="driver-operation-title"><div className="modal-heading"><div><p>JORNADA DEL MOTORIZADO</p><h2 id="driver-operation-title">{driver.name}</h2></div><button className="modal-close" onClick={onClose} type="button" aria-label="Cerrar"><X size={17} weight="bold" /></button></div>
-    <div className="invite-preview"><Avatar initials={driver.initials} tone="mint" /><span><strong>{statusCopy[driver.status].label}</strong><small>{driver.phone} · Licencia {driver.licenseNumber || "sin registrar"}</small></span></div>
-    {driver.activeShift ? <div className="drivers-command-bar"><button className={`button ${mode === "fuel" ? "button-primary" : "button-secondary"}`} type="button" onClick={() => setMode("fuel")}><GasPump size={18} /> Registrar combustible</button><button className={`button ${mode === "close" ? "button-primary" : "button-secondary"}`} type="button" onClick={() => setMode("close")}><SignOut size={18} /> Registrar regreso</button></div> : null}
-    <form className="modal-form" action={onSave}>
-      {mode === "start" ? <><div className="form-grid"><label className="driver-form-wide">Vehículo<select name="vehicleId" value={selectedVehicleId} onChange={(event) => setSelectedVehicleId(event.target.value)} required disabled={loadingVehicles}><option value="">{loadingVehicles ? "Consultando flota…" : "Selecciona un vehículo"}</option>{vehicles.map((vehicle) => {
-        const blocked = vehicle.status !== "active" || vehicle.occupied || (vehicle.remainingKm !== null && vehicle.remainingKm <= 0);
-        const reason = vehicle.occupied ? " · en otra jornada" : vehicle.status !== "active" ? " · no operativo" : vehicle.remainingKm !== null && vehicle.remainingKm <= 0 ? " · mantenimiento vencido" : "";
-        return <option key={vehicle.id} value={vehicle.id} disabled={blocked}>{vehicle.code} · {vehicle.label} · {vehicle.plate}{reason}</option>;
-      })}</select></label><label>Kilometraje de salida<input name="startOdometer" type="number" min={selectedVehicle?.odometer ?? 0} defaultValue={selectedVehicle?.odometer ?? ""} key={`odometer-${selectedVehicleId}`} required /></label><label>Nivel de tanque (%)<input name="fuelLevel" type="number" min="0" max="100" defaultValue={selectedVehicle?.fuelLevel ?? ""} key={`fuel-${selectedVehicleId}`} required /></label><label>Fondo de caja (C$)<input name="openingCash" type="number" min="0" step="0.01" defaultValue="0" required /></label></div>{selectedVehicle && selectedVehicle.remainingKm !== null && selectedVehicle.remainingKm <= 500 ? <p className={selectedVehicle.remainingKm <= 0 ? "form-error" : "form-notice"}><Warning size={17} weight="fill" /> {selectedVehicle.remainingKm <= 0 ? "Salida bloqueada: mantenimiento vencido." : `Alerta: faltan ${selectedVehicle.remainingKm.toLocaleString("es-NI")} km para mantenimiento.`}</p> : null}<button className="button button-primary button-full" type="submit" disabled={saving || !selectedVehicleId}><SignIn size={18} /> {saving ? "Registrando salida…" : "Registrar salida e iniciar jornada"}</button></> : null}
-      {mode === "fuel" ? <><div className="form-grid"><label>Vehículo<input value={currentVehicle ? `${currentVehicle.label} · ${currentVehicle.plate}` : "Sin vehículo"} readOnly /></label><label>Kilometraje al cargar<input name="odometer" type="number" min={currentVehicle?.odometer ?? driver.activeShift?.startOdometer ?? 0} defaultValue={currentVehicle?.odometer ?? ""} required /></label><label>Litros cargados<input name="liters" type="number" min="0.01" max="200" step="0.001" placeholder="0.00" required /></label><label>Monto pagado (C$)<input name="amount" type="number" min="0" step="0.01" placeholder="0.00" required /></label><label>Tanque después de cargar (%)<input name="fuelLevelAfter" type="number" min="0" max="100" defaultValue={currentVehicle?.fuelLevel ?? ""} required /></label><label>Gasolinera<input name="stationName" placeholder="Nombre opcional" /></label></div><p className="form-help">Con litros, monto y kilometraje el sistema podrá calcular rendimiento y costo por kilómetro.</p><button className="button button-primary button-full" type="submit" disabled={saving}><GasPump size={18} /> {saving ? "Registrando carga…" : "Guardar carga de combustible"}</button></> : null}
-      {mode === "close" ? <><div className="form-grid"><label>Kilometraje de regreso<input name="endOdometer" type="number" min={currentVehicle?.odometer ?? driver.activeShift?.startOdometer ?? 0} defaultValue={currentVehicle?.odometer ?? ""} required /></label><label>Nivel de tanque al regresar (%)<input name="fuelLevel" type="number" min="0" max="100" defaultValue={currentVehicle?.fuelLevel ?? ""} required /></label><label>Cierre de caja (C$)<input name="closingCash" type="number" min="0" step="0.01" defaultValue="0" required /></label><label className="driver-form-wide">Observaciones<textarea name="notes" placeholder="Novedades de la jornada" /></label></div>{currentVehicle && currentVehicle.nextMaintenanceAt !== null ? <p className={currentVehicle.nextMaintenanceAt - currentVehicle.odometer <= 500 ? "form-notice" : "form-help"}><Gauge size={17} /> Próximo mantenimiento en {Math.max(0, currentVehicle.nextMaintenanceAt - currentVehicle.odometer).toLocaleString("es-NI")} km. Si el regreso alcanza el límite, la siguiente salida quedará bloqueada.</p> : null}<button className="button button-primary button-full" type="submit" disabled={saving}><SignOut size={18} /> {saving ? "Cerrando jornada…" : "Registrar regreso y cerrar jornada"}</button></> : null}
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-    </form>
-  </dialog></div>;
+  const assignableVehicles = vehicles.filter((vehicle) => {
+    const occupiedByAnother = (vehicle.assignedDriverId !== null && vehicle.assignedDriverId !== driver.id) || (vehicle.openShiftDriverId !== null && vehicle.openShiftDriverId !== driver.id);
+    return vehicle.status === "active" && !occupiedByAnother && (vehicle.remainingKm === null || vehicle.remainingKm > 0);
+  });
+
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <DialogContent className="max-h-[min(92vh,760px)] overflow-y-auto border-0 p-0 shadow-2xl sm:max-w-xl">
+      <DialogHeader className="border-b border-slate-100 px-6 py-5 text-left">
+        <p className="text-[11px] font-extrabold tracking-[.14em] text-emerald-700">JORNADA DEL MOTORIZADO</p>
+        <DialogTitle className="text-2xl font-bold tracking-tight">{driver.name}</DialogTitle>
+        <DialogDescription>{driver.phone} · Licencia {driver.licenseNumber || "sin registrar"}</DialogDescription>
+      </DialogHeader>
+
+      <div className="mx-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"><Avatar initials={driver.initials} tone="mint" /><span><strong className="block text-sm text-slate-950">{statusCopy[driver.status].label}</strong><small>{currentVehicle ? `${currentVehicle.label} · ${currentVehicle.plate}` : "Vehículo pendiente"}</small></span></div>
+
+      {driver.activeShift ? <div className="mx-6 grid grid-cols-2 rounded-xl bg-slate-100 p-1"><Button className={mode === "fuel" ? "bg-white text-slate-950 shadow-sm hover:bg-white" : "text-slate-500"} variant="ghost" type="button" onClick={() => setMode("fuel")}><GasPump /> Combustible</Button><Button className={mode === "close" ? "bg-white text-slate-950 shadow-sm hover:bg-white" : "text-slate-500"} variant="ghost" type="button" onClick={() => setMode("close")}><SignOut /> Regreso</Button></div> : null}
+
+      <form action={onSave} className="grid gap-5 px-6 pb-6">
+        {mode === "start" ? <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2"><Field label="Vehículo asignado"><input type="hidden" name="vehicleId" value={selectedVehicleId} /><Select value={selectedVehicleId} onValueChange={(value) => setSelectedVehicleId(value ?? "")} disabled={loadingVehicles || Boolean(driver.vehicle)}><SelectTrigger className="h-10 w-full"><SelectValue placeholder={loadingVehicles ? "Consultando flota…" : "Selecciona un vehículo"} /></SelectTrigger><SelectContent>{assignableVehicles.map((vehicle) => <SelectItem key={vehicle.id} value={vehicle.id}>{vehicle.code} · {vehicle.label} · {vehicle.plate}{vehicle.assignedDriverId === driver.id ? " · asignado" : ""}</SelectItem>)}</SelectContent></Select></Field></div>
+            <Field label="Kilometraje de salida"><Input name="startOdometer" type="number" min={selectedVehicle?.odometer ?? 0} defaultValue={selectedVehicle?.odometer ?? ""} key={`odometer-${selectedVehicleId}`} required /></Field>
+            <Field label="Nivel de tanque (%)"><Input name="fuelLevel" type="number" min="0" max="100" defaultValue={selectedVehicle?.fuelLevel ?? ""} key={`fuel-${selectedVehicleId}`} required /></Field>
+            <Field label="Fondo de caja (C$)"><Input name="openingCash" type="number" min="0" step="0.01" defaultValue="0" required /></Field>
+          </div>
+          {selectedVehicle && selectedVehicle.remainingKm !== null && selectedVehicle.remainingKm <= 500 ? <p className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${selectedVehicle.remainingKm <= 0 ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}><Warning size={17} weight="fill" /> {selectedVehicle.remainingKm <= 0 ? "Salida bloqueada: mantenimiento vencido." : `Faltan ${selectedVehicle.remainingKm.toLocaleString("es-NI")} km para mantenimiento.`}</p> : null}
+          <Button className="h-10 w-full bg-emerald-700 hover:bg-emerald-800" type="submit" disabled={saving || !selectedVehicleId}><SignIn /> {saving ? "Registrando salida…" : "Registrar salida e iniciar jornada"}</Button>
+        </> : null}
+
+        {mode === "fuel" ? <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Vehículo"><Input value={currentVehicle ? `${currentVehicle.label} · ${currentVehicle.plate}` : "Sin vehículo"} readOnly /></Field>
+            <Field label="Kilometraje al cargar"><Input name="odometer" type="number" min={currentVehicle?.odometer ?? driver.activeShift?.startOdometer ?? 0} defaultValue={currentVehicle?.odometer ?? ""} required /></Field>
+            <Field label="Litros cargados"><Input name="liters" type="number" min="0.01" max="200" step="0.001" placeholder="0.00" required /></Field>
+            <Field label="Monto pagado (C$)"><Input name="amount" type="number" min="0" step="0.01" placeholder="0.00" required /></Field>
+            <Field label="Tanque después de cargar (%)"><Input name="fuelLevelAfter" type="number" min="0" max="100" defaultValue={currentVehicle?.fuelLevel ?? ""} required /></Field>
+            <Field label="Gasolinera"><Input name="stationName" placeholder="Nombre opcional" /></Field>
+          </div>
+          <p className="rounded-xl bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-700">Con litros, monto y kilometraje calculamos rendimiento y costo por kilómetro.</p>
+          <Button className="h-10 w-full bg-emerald-700 hover:bg-emerald-800" type="submit" disabled={saving}><GasPump /> {saving ? "Registrando carga…" : "Guardar carga de combustible"}</Button>
+        </> : null}
+
+        {mode === "close" ? <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Kilometraje de regreso"><Input name="endOdometer" type="number" min={currentVehicle?.odometer ?? driver.activeShift?.startOdometer ?? 0} defaultValue={currentVehicle?.odometer ?? ""} required /></Field>
+            <Field label="Nivel de tanque al regresar (%)"><Input name="fuelLevel" type="number" min="0" max="100" defaultValue={currentVehicle?.fuelLevel ?? ""} required /></Field>
+            <Field label="Cierre de caja (C$)"><Input name="closingCash" type="number" min="0" step="0.01" defaultValue="0" required /></Field>
+            <div className="sm:col-span-2"><Field label="Observaciones"><Textarea name="notes" className="min-h-24 resize-none" placeholder="Novedades de la jornada" /></Field></div>
+          </div>
+          {currentVehicle && currentVehicle.nextMaintenanceAt !== null ? <p className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600"><Gauge className="mt-0.5 shrink-0" size={17} /> Próximo mantenimiento en {Math.max(0, currentVehicle.nextMaintenanceAt - currentVehicle.odometer).toLocaleString("es-NI")} km. Si el regreso alcanza el límite, la siguiente salida quedará bloqueada.</p> : null}
+          <Button className="h-10 w-full bg-emerald-700 hover:bg-emerald-800" type="submit" disabled={saving}><SignOut /> {saving ? "Cerrando jornada…" : "Registrar regreso y cerrar jornada"}</Button>
+        </> : null}
+        {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">{error}</p> : null}
+      </form>
+    </DialogContent>
+  </Dialog>;
 }

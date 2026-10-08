@@ -1,11 +1,18 @@
 "use client";
 
-import { Avatar, Badge, EmptyState } from "@/components/ui";
+import { Avatar, Badge } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { NumericInput } from "@/components/numeric-input";
 import { currency } from "@/lib/format";
 import type { AdminBootstrap, OperationalOrder } from "@/lib/operations/types";
-import { ArrowClockwise, CheckCircle, Compass, GasPump, MagnifyingGlass, MapPin, Motorcycle, PaperPlaneTilt, Plus, Star, UserPlus, X } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowRight, ChatCircleDots, CheckCircle, Compass, GasPump, MagnifyingGlass, MapPin, Motorcycle, PaperPlaneTilt, Plus, QrCode, Star, UserPlus } from "@phosphor-icons/react";
 import clsx from "clsx";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -363,7 +370,23 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
   }
 
   if (!active) {
-    return <><div className="conversation-workspace"><section className="inbox-list-panel"><div className="inbox-list-heading"><div><h2>Conversaciones</h2><p>WhatsApp Business</p></div><button className="icon-button" type="button" onClick={() => setDialog("conversation")} aria-label="Nueva conversación"><Plus size={20} /></button></div><EmptyState title="Sin conversaciones" detail="Cuando llegue un mensaje de WhatsApp aparecerá aquí. También puedes abrir una conversación manual para probar el flujo." action={<button className="button button-primary" type="button" onClick={() => setDialog("conversation")}>Abrir conversación</button>} /></section><section className="chat-panel empty-chat"><EmptyState title="Tu bandeja está lista" detail="Conecta tu WhatsApp Business o registra una solicitud para crear el primer pedido." /></section></div>{dialog ? <ConversationDialog saving={busy} error={error} onClose={() => setDialog(null)} onSave={createManualConversation} /> : null}</>;
+    const connected = data.whatsapp.connectionStatus === "connected";
+    return <>
+      <div className="grid min-h-[620px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[320px_1fr]">
+        <aside className="flex flex-col border-b border-slate-200 bg-slate-50/60 p-5 lg:border-r lg:border-b-0">
+          <div className="flex items-center justify-between"><div><h2 className="text-lg font-bold tracking-tight text-slate-950">Conversaciones</h2><p className="mt-1 text-xs text-slate-500">WhatsApp Business</p></div><Button variant="outline" size="icon" onClick={() => setDialog("conversation")} aria-label="Nueva conversación"><Plus /></Button></div>
+          <div className="my-auto py-10 text-center"><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200"><ChatCircleDots size={25} weight="duotone" /></span><h3 className="mt-4 text-sm font-bold text-slate-900">Aún no hay chats</h3><p className="mx-auto mt-2 max-w-56 text-xs leading-5 text-slate-500">Los mensajes nuevos aparecerán aquí, separados por cliente.</p></div>
+          <Button className="h-10 w-full bg-emerald-700 hover:bg-emerald-800" onClick={() => setDialog("conversation")}>Registrar solicitud manual</Button>
+        </aside>
+        <main className="grid place-items-center bg-[radial-gradient(circle_at_center,#f0fbf5,transparent_32rem)] p-6 sm:p-12">
+          <Card className="w-full max-w-xl border-emerald-100 bg-white/95 shadow-xl shadow-emerald-950/5">
+            <CardHeader className="items-center text-center"><span className="grid size-16 place-items-center rounded-3xl bg-emerald-50 text-emerald-700"><QrCode size={34} weight="duotone" /></span><CardTitle className="mt-3 text-2xl font-bold tracking-tight text-slate-950">{connected ? "Tu bandeja está conectada" : "Conecta el WhatsApp de tu negocio"}</CardTitle><CardDescription className="max-w-md text-sm leading-6">{connected ? "La conexión está activa. En cuanto un cliente escriba, su conversación aparecerá aquí sin registrarla manualmente." : "Escanea un código QR desde WhatsApp Business. No necesitas registrar cada chat ni copiar mensajes a mano."}</CardDescription></CardHeader>
+            <CardContent className="grid gap-3 pb-6 sm:grid-cols-2"><Button className="h-11 bg-emerald-700 hover:bg-emerald-800" asChild><Link href="/admin/configuracion?section=whatsapp">{connected ? "Ver conexión" : "Escanear código QR"}<ArrowRight /></Link></Button><Button className="h-11" variant="outline" onClick={() => setDialog("conversation")}>Probar con una solicitud</Button></CardContent>
+          </Card>
+        </main>
+      </div>
+      {dialog ? <ConversationDialog saving={busy} error={error} onClose={() => setDialog(null)} onSave={createManualConversation} /> : null}
+    </>;
   }
 
   const state = currentOrder ? orderState[currentOrder.status] : { label: "Sin pedido", tone: "neutral" as const };
@@ -414,5 +437,5 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
 }
 
 function ConversationDialog({ onClose, onSave, saving, error }: { onClose: () => void; onSave: (data: FormData) => Promise<void>; saving: boolean; error: string | null }) {
-  return <div className="modal-backdrop" role="presentation"><dialog className="modal-card" open aria-labelledby="conversation-modal-title"><div className="modal-heading"><div><p>CONVERSACIÓN MANUAL</p><h2 id="conversation-modal-title">Registrar solicitud</h2></div><button className="modal-close" type="button" onClick={onClose} aria-label="Cerrar"><X size={17} /></button></div><p className="modal-intro">Úsalo para registrar una solicitud recibida por llamada o para probar el flujo antes de conectar el canal de mensajería.</p><form className="modal-form" action={onSave}><label>Nombre del cliente<input name="fullName" required placeholder="Nombre completo" /></label><label>Teléfono<input name="phone" type="tel" required placeholder="+505 8888 0000" /></label><label>Solicitud inicial<textarea name="message" required placeholder="Ej. Quiero un pollo asado de El Masayita" /></label>{error ? <p className="form-error" role="alert">{error}</p> : null}<button className="button button-primary button-full" type="submit" disabled={saving}>{saving ? "Guardando…" : "Crear conversación"}</button></form></dialog></div>;
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className="border-0 p-0 shadow-2xl sm:max-w-lg"><DialogHeader className="border-b border-slate-100 px-6 py-5 text-left"><p className="text-[11px] font-extrabold tracking-[.14em] text-emerald-700">SOLICITUD MANUAL</p><DialogTitle className="text-2xl font-bold tracking-tight">Registrar conversación</DialogTitle><DialogDescription>Para pedidos recibidos por llamada o para probar el flujo antes de conectar WhatsApp.</DialogDescription></DialogHeader><form className="grid gap-4 px-6 pb-6" action={onSave}><div className="grid gap-2"><Label>Nombre del cliente</Label><Input className="h-10" name="fullName" required placeholder="Nombre completo" /></div><div className="grid gap-2"><Label>Teléfono</Label><Input className="h-10" name="phone" type="tel" required placeholder="+505 8888 0000" /></div><div className="grid gap-2"><Label>Solicitud inicial</Label><Textarea className="min-h-28 resize-none" name="message" required placeholder="Ej. Quiero un pollo asado de El Masayita" /></div>{error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">{error}</p> : null}<DialogFooter className="mx-0 mb-0 bg-transparent px-0 pb-0"><Button variant="outline" type="button" onClick={onClose}>Cancelar</Button><Button className="bg-emerald-700 hover:bg-emerald-800" type="submit" disabled={saving}>{saving ? "Guardando…" : "Crear conversación"}</Button></DialogFooter></form></DialogContent></Dialog>;
 }

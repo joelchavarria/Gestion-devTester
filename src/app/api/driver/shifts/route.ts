@@ -3,7 +3,6 @@ import { apiErrorResponse, assertSameOrigin, requireDriverContext, AppError } fr
 import { z } from "zod";
 
 const schema = z.object({
-  vehicleId: z.string().uuid(),
   startOdometer: z.coerce.number().int().min(0).max(2_000_000),
   fuelLevel: z.coerce.number().int().min(0).max(100),
   openingCash: z.coerce.number().min(0).max(100000).default(0),
@@ -19,8 +18,9 @@ export async function POST(request: Request) {
       .eq("company_id", context.companyId).eq("driver_id", context.driver.id).is("ended_at", null).maybeSingle();
     if (existingShiftError) throw existingShiftError;
     if (existingShift) throw new AppError("Ya tienes una jornada abierta. Ciérrala antes de iniciar otra.");
+    if (!context.driver.assigned_vehicle_id) throw new AppError("Operaciones debe asignarte un vehículo antes de iniciar la jornada.", 409);
     const { data: vehicle, error: vehicleError } = await admin.from("vehicles").select("*")
-      .eq("id", input.vehicleId).eq("company_id", context.companyId).single();
+      .eq("id", context.driver.assigned_vehicle_id).eq("company_id", context.companyId).single();
     if (vehicleError || !vehicle) throw new AppError("No encontramos el vehículo seleccionado.", 404);
     if (vehicle.status !== "active") throw new AppError("Este vehículo no está habilitado para salir.");
     if (vehicle.next_maintenance_km !== null && vehicle.current_odometer_km >= vehicle.next_maintenance_km) {
@@ -29,6 +29,10 @@ export async function POST(request: Request) {
     if (input.startOdometer < vehicle.current_odometer_km) {
       throw new AppError("El kilometraje inicial no puede ser menor al último kilometraje registrado.");
     }
+    const { data: occupied, error: occupiedError } = await admin.from("driver_shifts").select("id")
+      .eq("company_id", context.companyId).eq("vehicle_id", vehicle.id).is("ended_at", null).maybeSingle();
+    if (occupiedError) throw occupiedError;
+    if (occupied) throw new AppError("Este vehículo ya está en la jornada de otro motorizado.", 409);
     const { data: shift, error: shiftError } = await admin.from("driver_shifts").insert({
       company_id: context.companyId,
       driver_id: context.driver.id,

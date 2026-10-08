@@ -36,15 +36,22 @@ export async function GET() {
   try {
     const context = await requireOwnerContext();
     const admin = createSupabaseAdminClient();
-    const [{ data: vehicles, error: vehicleError }, { data: shifts, error: shiftError }, { data: settings, error: settingsError }] = await Promise.all([
+    const [{ data: vehicles, error: vehicleError }, { data: shifts, error: shiftError }, { data: assignments, error: assignmentError }, { data: settings, error: settingsError }] = await Promise.all([
       admin.from("vehicles").select("id, code, plate, make, model, model_year, color, fuel_type, current_odometer_km, fuel_level_percent, status, next_maintenance_km, documents").eq("company_id", context.companyId).order("code"),
-      admin.from("driver_shifts").select("vehicle_id").eq("company_id", context.companyId).is("ended_at", null),
+      admin.from("driver_shifts").select("vehicle_id, driver_id").eq("company_id", context.companyId).is("ended_at", null),
+      admin.from("driver_profiles").select("id, assigned_vehicle_id").eq("company_id", context.companyId).not("assigned_vehicle_id", "is", null),
       admin.from("company_settings").select("maintenance_interval_km").eq("company_id", context.companyId).single(),
     ]);
     if (vehicleError) throw vehicleError;
     if (shiftError) throw shiftError;
+    if (assignmentError) throw assignmentError;
     if (settingsError) throw settingsError;
-    const occupied = new Set((shifts ?? []).map((shift) => shift.vehicle_id));
+    const occupied = new Set([
+      ...(shifts ?? []).map((shift) => shift.vehicle_id),
+      ...(assignments ?? []).flatMap((assignment) => assignment.assigned_vehicle_id ? [assignment.assigned_vehicle_id] : []),
+    ]);
+    const assignmentByVehicle = new Map((assignments ?? []).flatMap((assignment) => assignment.assigned_vehicle_id ? [[assignment.assigned_vehicle_id, assignment.id] as const] : []));
+    const openShiftByVehicle = new Map((shifts ?? []).map((shift) => [shift.vehicle_id, shift.driver_id] as const));
     return Response.json({
       maintenanceIntervalKm: settings.maintenance_interval_km,
       vehicles: (vehicles ?? []).map((vehicle) => ({
@@ -58,6 +65,8 @@ export async function GET() {
         nextMaintenanceAt: vehicle.next_maintenance_km,
         remainingKm: vehicle.next_maintenance_km === null ? null : vehicle.next_maintenance_km - vehicle.current_odometer_km,
         occupied: occupied.has(vehicle.id),
+        assignedDriverId: assignmentByVehicle.get(vehicle.id) ?? null,
+        openShiftDriverId: openShiftByVehicle.get(vehicle.id) ?? null,
         documents: vehicle.documents,
       })),
     });

@@ -223,14 +223,14 @@ isOneToOne: true
                   ]
                 },"driver_profiles": {
                   Row: {
-                    "company_id": string,"created_at": string,"emergency_contact": string | null,"id": string,"invite_status": string,"is_available": boolean,"license_number": string | null,"member_id": string,"rating": number,"updated_at": string,"user_id": string
+                    "assigned_vehicle_id": string | null,"company_id": string,"created_at": string,"emergency_contact": string | null,"id": string,"invite_status": string,"is_available": boolean,"license_number": string | null,"member_id": string,"rating": number,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id": string,"created_at"?: string,"emergency_contact"?: string | null,"id"?: string,"invite_status"?: string,"is_available"?: boolean,"license_number"?: string | null,"member_id": string,"rating"?: number,"updated_at"?: string,"user_id": string
+                    "assigned_vehicle_id"?: string | null,"company_id": string,"created_at"?: string,"emergency_contact"?: string | null,"id"?: string,"invite_status"?: string,"is_available"?: boolean,"license_number"?: string | null,"member_id": string,"rating"?: number,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"emergency_contact"?: string | null,"id"?: string,"invite_status"?: string,"is_available"?: boolean,"license_number"?: string | null,"member_id"?: string,"rating"?: number,"updated_at"?: string,"user_id"?: string
+                    "assigned_vehicle_id"?: string | null,"company_id"?: string,"created_at"?: string,"emergency_contact"?: string | null,"id"?: string,"invite_status"?: string,"is_available"?: boolean,"license_number"?: string | null,"member_id"?: string,"rating"?: number,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -238,6 +238,12 @@ isOneToOne: true
       columns: ["company_id"]
 isOneToOne: false
       referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "driver_profiles_assigned_vehicle_id_fkey"
+      columns: ["assigned_vehicle_id"]
+isOneToOne: false
+      referencedRelation: "vehicles"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "driver_profiles_member_id_fkey"

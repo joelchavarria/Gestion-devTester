@@ -121,7 +121,8 @@ function mapDriver(
 ): OperationalDriver {
   const profile = profiles.get(row.user_id);
   const shift = shifts.get(row.id);
-  const vehicle = shift ? vehicles.get(shift.vehicle_id) : undefined;
+  const vehicleId = shift?.vehicle_id ?? row.assigned_vehicle_id;
+  const vehicle = vehicleId ? vehicles.get(vehicleId) : undefined;
   const maintenanceBlocked = Boolean(vehicle && (vehicle.status !== "active" || (vehicle.next_maintenance_km !== null && vehicle.current_odometer_km >= vehicle.next_maintenance_km)));
   const status: OperationalDriver["status"] = row.invite_status !== "activated"
     ? "pending"
@@ -220,7 +221,12 @@ export async function getAdminBootstrap(context: CompanyContext): Promise<AdminB
 
   const operationalVehicles = vehicles.map((vehicle) => {
     const activeShift = shiftRows.find((shift) => shift.vehicle_id === vehicle.id);
-    return mapVehicle(vehicle, activeShift ? driverNames.get(activeShift.driver_id) : undefined);
+    const assignedDriver = driverRows.find((driver) => driver.assigned_vehicle_id === vehicle.id);
+    return mapVehicle(vehicle, activeShift
+      ? driverNames.get(activeShift.driver_id)
+      : assignedDriver
+        ? driverNames.get(assignedDriver.id)
+        : undefined);
   });
   const operationalDrivers = driverRows.map((driver) => mapDriver(driver, profilesByUserId, shiftsByDriver, vehiclesById, busyDriverIds, deliveriesByDriver));
   const operationalOrders = orderRows.map((order) => mapOrder(order, customersById, driverNames));
@@ -427,6 +433,7 @@ export async function getDriverBootstrap(context: CompanyContext & { driver: Dri
     recentOrders: recentOrderRows.map(mapSingleOrder),
     recentFuel: unwrap(fuelResult).map((fuel) => ({ id: fuel.id, liters: fuel.liters, amount: fuel.amount, odometer: fuel.odometer_km, recordedAt: fuel.recorded_at })),
     availableVehicles: vehicles
+      .filter((vehicle) => vehicle.id === context.driver.assigned_vehicle_id)
       .filter((vehicle) => vehicle.status === "active" && !occupiedVehicleIds.has(vehicle.id))
       .filter((vehicle) => vehicle.next_maintenance_km === null || vehicle.current_odometer_km < vehicle.next_maintenance_km)
       .map((vehicle) => mapVehicle(vehicle)),

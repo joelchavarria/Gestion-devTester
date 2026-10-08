@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { apiErrorResponse, assertSameOrigin, requireOwnerContext } from "@/lib/server/context";
+import { apiErrorResponse, assertSameOrigin, requireOwnerContext, AppError } from "@/lib/server/context";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -10,6 +10,7 @@ const schema = z.object({
   licenseNumber: z.string().trim().min(3).max(80),
   identityDocument: z.string().trim().max(80).optional(),
   emergencyContact: z.string().trim().max(120).optional(),
+  vehicleId: z.string().uuid(),
 });
 
 export async function POST(request: Request) {
@@ -18,6 +19,20 @@ export async function POST(request: Request) {
     const input = schema.parse(await request.json());
     const context = await requireOwnerContext();
     const admin = createSupabaseAdminClient();
+    const [vehicleResult, assignedResult, shiftResult] = await Promise.all([
+      admin.from("vehicles").select("id, status, current_odometer_km, next_maintenance_km").eq("id", input.vehicleId).eq("company_id", context.companyId).maybeSingle(),
+      admin.from("driver_profiles").select("id").eq("company_id", context.companyId).eq("assigned_vehicle_id", input.vehicleId).maybeSingle(),
+      admin.from("driver_shifts").select("id").eq("company_id", context.companyId).eq("vehicle_id", input.vehicleId).is("ended_at", null).maybeSingle(),
+    ]);
+    if (vehicleResult.error) throw vehicleResult.error;
+    if (!vehicleResult.data) throw new AppError("No encontramos el vehículo seleccionado.", 404);
+    if (assignedResult.error) throw assignedResult.error;
+    if (shiftResult.error) throw shiftResult.error;
+    if (assignedResult.data || shiftResult.data) throw new AppError("Este vehículo ya está asignado a otro motorizado.", 409);
+    if (vehicleResult.data.status !== "active") throw new AppError("Selecciona un vehículo operativo.");
+    if (vehicleResult.data.next_maintenance_km !== null && vehicleResult.data.current_odometer_km >= vehicleResult.data.next_maintenance_km) {
+      throw new AppError("El vehículo seleccionado requiere mantenimiento antes de asignarlo.");
+    }
     // This public bridge consumes Supabase's invite hash before /driver's auth guard runs.
     const redirectTo = new URL("/auth/accept-invite", request.url).toString();
     const { data: invitation, error: invitationError } = await admin.auth.admin.inviteUserByEmail(input.email, {
@@ -45,6 +60,7 @@ export async function POST(request: Request) {
       member_id: member.id,
       license_number: input.licenseNumber,
       emergency_contact: input.emergencyContact || null,
+      assigned_vehicle_id: input.vehicleId,
       invite_status: "pending",
     });
     if (driverError) throw driverError;
@@ -54,7 +70,7 @@ export async function POST(request: Request) {
       action: "driver.invited",
       entity_type: "driver_profile",
       entity_id: null,
-      after_data: { email: input.email, fullName: input.fullName, phone: input.phone },
+      after_data: { email: input.email, fullName: input.fullName, phone: input.phone, vehicleId: input.vehicleId },
     });
     return NextResponse.json({ message: "Invitación creada y enviada al correo del motorizado." }, { status: 201 });
   } catch (error) {
