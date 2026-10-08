@@ -143,7 +143,7 @@ export function RegisterScreen() {
             {notice ? <p className="form-notice" role="status">{notice}</p> : null}
             <button className="button button-primary button-full" disabled={loading} type="submit">{loading ? "Creando…" : "Continuar"}<ArrowRight size={18} weight="bold" /></button>
           </form>
-          <p className="auth-switch">Al continuar aceptas los términos y la política de privacidad.</p>
+          <p className="auth-switch">Al continuar aceptas los <Link href="/terminos">términos</Link> y la <Link href="/privacidad">política de privacidad</Link>.</p>
         </div>
       </section>
     </main>
