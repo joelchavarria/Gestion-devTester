@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { OperationalDriver } from "@/lib/operations/types";
-import { CalendarCheck, CheckCircle, EnvelopeSimple, GasPump, Gauge, Motorcycle, Plus, SignIn, SignOut, UserPlus, Warning } from "@phosphor-icons/react";
+import { CalendarCheck, CheckCircle, EnvelopeSimple, GasPump, Gauge, Motorcycle, Plus, SignIn, SignOut, Trash, UserPlus, Warning } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
@@ -123,6 +123,27 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
     setMode("invite");
   }
 
+  async function cleanupDrivers() {
+    if (!drivers.length || !window.confirm(`¿Eliminar los ${drivers.length} motorizado(s)? Las cuentas sin historial se eliminarán y las que tengan historial se desactivarán.`)) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/drivers/cleanup", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE_ALL_DRIVERS" }),
+      });
+      const payload = await response.json() as { message?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "No fue posible limpiar los motorizados.");
+      setNotice(payload.message ?? "Motorizados limpiados.");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible limpiar los motorizados.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveOperation(formData: FormData) {
     if (!selectedDriver) return;
     setSaving(true);
@@ -176,7 +197,7 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
     <PwaInstallCard />
     <section className="drivers-command-bar panel">
       <div><span>OPERACIÓN DE EQUIPO</span><strong>Alta y control diario de motorizados</strong><small>Invitación individual, salida, combustible, kilometraje y regreso en un mismo flujo.</small></div>
-      <div><button className="button button-secondary" type="button" onClick={() => { void openInvite(); }}><EnvelopeSimple size={18} /> Enviar invitación</button><button className="button button-primary" type="button" onClick={() => { void openRegister(); }}><Plus size={18} weight="bold" /> Registrar motorizado</button></div>
+      <div><button className="button button-secondary danger-button" type="button" onClick={() => { void cleanupDrivers(); }} disabled={saving || !drivers.length}><Trash size={18} /> Eliminar todos</button><button className="button button-secondary" type="button" onClick={() => { void openInvite(); }}><EnvelopeSimple size={18} /> Enviar invitación</button><button className="button button-primary" type="button" onClick={() => { void openRegister(); }}><Plus size={18} weight="bold" /> Registrar motorizado</button></div>
     </section>
     {notice ? <p className="form-notice driver-notice"><CheckCircle size={17} weight="fill" /> {notice}</p> : null}
     {error && !mode && !selectedDriver ? <p className="form-error driver-notice" role="alert">{error}</p> : null}
