@@ -20,5 +20,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=build /app/package.json /app/package-lock.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
 EXPOSE 3000
 CMD ["npm", "run", "start", "--", "-H", "0.0.0.0"]

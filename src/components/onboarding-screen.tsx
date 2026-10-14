@@ -1,11 +1,11 @@
 "use client";
 
-import { ArrowRight, CheckCircle, QrCode, Storefront, Tag, WhatsappLogo } from "@phosphor-icons/react";
+import { ArrowRight, CheckCircle, Storefront, Tag } from "@phosphor-icons/react";
 import { NumericInput } from "@/components/numeric-input";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const steps = ["Información", "Tarifas", "WhatsApp Business"];
+const steps = ["Información", "Tarifas"];
 
 type CompanyInfo = {
   displayName: string;
@@ -19,7 +19,6 @@ const initialInfo: CompanyInfo = { displayName: "", city: "Granada, Nicaragua", 
 export function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [info, setInfo] = useState<CompanyInfo>(initialInfo);
-  const [readyForWhatsApp, setReadyForWhatsApp] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -98,25 +97,11 @@ export function OnboardingScreen() {
             <div className="onboarding-tariffs"><span>Granada Centro <b>C$ 50</b></span><span>Granada Sur <b>C$ 70</b></span><span>Granada Norte <b>C$ 70</b></span><span>Zonas aledañas <b>C$ 90</b></span></div>
             <label className="settings-input">Gestión base para mandados<div><b>C$</b><NumericInput min={0} value={info.managementFee} onValueChange={(value) => setInfo({ ...info, managementFee: value })} /></div></label>
           </div>
-        ) : (
-          <div className="onboarding-content whatsapp-onboarding">
-            <span className="auth-icon"><WhatsappLogo size={26} weight="fill" /></span>
-            <h1>Conecta WhatsApp Business</h1>
-            <p>Al crear la empresa irás directamente a Configuración para escanear el QR del número que atenderá a tus clientes.</p>
-            <div className="qr-connect-card">
-              <div className="qr-placeholder"><QrCode size={110} weight="regular" /></div>
-              <div>
-                <h3>{readyForWhatsApp ? "Listo para escanear" : "Vinculación por código QR"}</h3>
-                <p>{readyForWhatsApp ? "Crearemos la empresa y te mostraremos el QR. No tendrás que copiar tokens ni identificadores." : "Necesitarás el teléfono donde está instalado WhatsApp Business para abrir Dispositivos vinculados."}</p>
-                {readyForWhatsApp ? <span className="connected-copy"><CheckCircle size={18} weight="fill" /> El siguiente paso mostrará el QR</span> : <button className="button button-secondary" onClick={() => setReadyForWhatsApp(true)} type="button">Entendido, continuar</button>}
-              </div>
-            </div>
-          </div>
-        )}
+        ) : null}
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         <div className="onboarding-actions">
           <button type="button" className="button button-secondary" disabled={step === 0 || saving} onClick={() => { setError(null); setStep((current) => current - 1); }}>Atrás</button>
-          <button type="button" className="button button-primary" disabled={saving} onClick={() => last ? finish() : goForward()}>{saving ? "Creando empresa…" : last ? "Crear empresa y escanear QR" : "Continuar"}<ArrowRight size={18} weight="bold" /></button>
+          <button type="button" className="button button-primary" disabled={saving} onClick={() => last ? finish() : goForward()}>{saving ? "Creando empresa…" : last ? "Crear empresa" : "Continuar"}<ArrowRight size={18} weight="bold" /></button>
         </div>
       </section>
     </main>

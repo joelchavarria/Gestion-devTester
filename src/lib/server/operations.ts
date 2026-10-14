@@ -436,8 +436,9 @@ export async function getDriverBootstrap(context: CompanyContext & { driver: Dri
     context.driver.invite_status = "activated";
   }
 
-  const [companyResult, profileResult, shiftResult, vehiclesResult, orderResult, customerResult, fuelResult, assignmentResult] = await Promise.all([
+  const [companyResult, settingsResult, profileResult, shiftResult, vehiclesResult, orderResult, customerResult, fuelResult, assignmentResult] = await Promise.all([
     admin.from("companies").select("display_name").eq("id", context.companyId).single(),
+    admin.from("company_settings").select("otp_delivery_required").eq("company_id", context.companyId).single(),
     admin.from("profiles").select("*").eq("id", context.userId).single(),
     admin.from("driver_shifts").select("*").eq("company_id", context.companyId).eq("driver_id", context.driver.id).is("ended_at", null).maybeSingle(),
     admin.from("vehicles").select("*").eq("company_id", context.companyId).order("code"),
@@ -447,6 +448,7 @@ export async function getDriverBootstrap(context: CompanyContext & { driver: Dri
     admin.from("order_assignments").select("order_id").eq("company_id", context.companyId).eq("driver_id", context.driver.id).is("unassigned_at", null).is("accepted_at", null).is("rejected_at", null),
   ]);
   const company = unwrap(companyResult);
+  const settings = unwrap(settingsResult);
   const profile = unwrap(profileResult) as ProfileRow;
   if (shiftResult.error) throw shiftResult.error;
   const shift = shiftResult.data as ShiftRow | null;
@@ -478,6 +480,7 @@ export async function getDriverBootstrap(context: CompanyContext & { driver: Dri
 
   return {
     companyName: company.display_name,
+    settings: { otpDeliveryRequired: settings.otp_delivery_required },
     driver,
     openShift: shift ? mapShift(shift) : null,
     activeOrder: activeOrderRow ? mapSingleOrder(activeOrderRow) : null,

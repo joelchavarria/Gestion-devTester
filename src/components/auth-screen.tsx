@@ -3,19 +3,43 @@
 import { ArrowRight, CheckCircle, LockKey, Motorcycle, Phone, Storefront } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setRecoveryMode(new URLSearchParams(window.location.search).get("recovery") === "1"), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setNotice(null);
     const formData = new FormData(event.currentTarget);
+    if (recoveryMode) {
+      try {
+        const { error: updateError } = await createSupabaseBrowserClient().auth.updateUser({ password: String(formData.get("password") ?? "") });
+        if (updateError) throw updateError;
+        setRecoveryMode(false);
+        setNotice("Contraseña actualizada. Ya puedes ingresar con tu nueva clave.");
+        event.currentTarget.reset();
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "No fue posible actualizar la contraseña.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     const identifier = String(formData.get("email") ?? "").trim();
     try {
       const supabase = createSupabaseBrowserClient();
@@ -53,6 +77,26 @@ export function LoginScreen() {
     }
   }
 
+  async function requestPasswordReset() {
+    const email = resetEmail.trim();
+    if (!email || !email.includes("@")) {
+      setError("Necesitamos un correo válido para recuperar tu contraseña.");
+      return;
+    }
+    setError(null);
+    setNotice(null);
+    setLoading(true);
+    try {
+      const { error: resetError } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login?recovery=1` });
+      if (resetError) throw resetError;
+      setNotice("Te enviamos un enlace para crear una nueva contraseña.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No fue posible enviar el enlace de recuperación.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="auth-layout">
       <section className="auth-marketing">
@@ -60,7 +104,7 @@ export function LoginScreen() {
         <div className="auth-marketing-content">
           <span className="eyebrow-light">OPERACIÓN SIMPLE, CONTROL REAL</span>
           <h1>Tu delivery, siempre en movimiento.</h1>
-          <p>Atiende WhatsApp, organiza pedidos, controla tu flota y acompaña cada entrega desde un solo lugar.</p>
+          <p>Organiza pedidos, controla tu flota y acompaña cada entrega desde un solo lugar.</p>
           <ul>
             <li><CheckCircle size={20} weight="fill" /> Conversaciones convertidas en pedidos</li>
             <li><CheckCircle size={20} weight="fill" /> Ubicación de motorizados en tiempo real</li>
@@ -72,14 +116,16 @@ export function LoginScreen() {
       <section className="auth-card-wrap">
         <div className="auth-card">
           <span className="auth-icon"><LockKey size={25} weight="fill" /></span>
-          <h2>Bienvenido de vuelta</h2>
-          <p>Ingresa a tu panel de operaciones.</p>
+          <h2>{recoveryMode ? "Crea una nueva contraseña" : "Bienvenido de vuelta"}</h2>
+          <p>{recoveryMode ? "Elige una clave segura para volver a entrar." : "Ingresa a tu panel de operaciones."}</p>
           <form onSubmit={submit} className="auth-form">
-            <label>Usuario o correo electrónico<input name="email" type="text" placeholder="usuario o tu@empresa.com" autoComplete="username" required /></label>
-            <label>Contraseña<input name="password" type="password" placeholder="••••••••" autoComplete="current-password" required /></label>
-            <div className="auth-form-row"><label className="check-label"><input type="checkbox" defaultChecked /> Recordarme</label><button className="text-button" type="button">¿Olvidaste tu contraseña?</button></div>
+            {!recoveryMode ? <label>Usuario o correo electrónico<input name="email" type="text" placeholder="usuario o tu@empresa.com" autoComplete="username" required /></label> : null}
+            <label>{recoveryMode ? "Nueva contraseña" : "Contraseña"}<input name="password" type="password" placeholder="••••••••" autoComplete={recoveryMode ? "new-password" : "current-password"} minLength={recoveryMode ? 8 : undefined} required /></label>
+            {!recoveryMode ? <div className="auth-form-row"><label className="check-label"><input type="checkbox" defaultChecked /> Recordarme</label><button className="text-button" type="button" onClick={() => { setResetOpen((current) => !current); setError(null); setNotice(null); }}>¿Olvidaste tu contraseña?</button></div> : null}
+            {!recoveryMode && resetOpen ? <div className="password-reset-inline"><label>Correo para recuperar<input name="resetEmail" type="email" value={resetEmail} onChange={(event) => setResetEmail(event.target.value)} placeholder="tu@empresa.com" autoComplete="email" /></label><button className="button button-secondary button-full" type="button" disabled={loading} onClick={() => { void requestPasswordReset(); }}>Enviar enlace de recuperación</button></div> : null}
             {error ? <p className="form-error" role="alert">{error}</p> : null}
-            <button className="button button-primary button-full" disabled={loading} type="submit">{loading ? "Ingresando…" : "Ingresar al panel"}<ArrowRight size={18} weight="bold" /></button>
+            {notice ? <p className="form-notice" role="status">{notice}</p> : null}
+            <button className="button button-primary button-full" disabled={loading} type="submit">{loading ? "Guardando…" : recoveryMode ? "Actualizar contraseña" : "Ingresar al panel"}<ArrowRight size={18} weight="bold" /></button>
           </form>
           <p className="auth-switch">¿Aún no tienes cuenta? <Link href="/registro">Crea tu empresa</Link></p>
         </div>
@@ -132,7 +178,7 @@ export function RegisterScreen() {
         <div className="auth-marketing-content">
           <span className="eyebrow-light">CREA TU ESPACIO DE OPERACIÓN</span>
           <h1>Empieza a ordenar tus entregas.</h1>
-          <p>Tu número registrado será la cuenta administradora de la empresa. Después conectarás tu WhatsApp Business oficial.</p>
+          <p>Tu número registrado será la cuenta administradora de la empresa y podrás invitar a tu equipo cuando quieras.</p>
           <div className="auth-info-card"><Storefront size={22} weight="fill" /><p>Una empresa, sus operadores, motorizados, vehículos y datos quedan completamente separados.</p></div>
         </div>
         <p className="auth-footer">¿Ya tienes cuenta? <Link href="/login">Inicia sesión</Link></p>

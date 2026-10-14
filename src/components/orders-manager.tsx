@@ -116,19 +116,19 @@ export function OrdersManager({ data }: { data: AdminBootstrap }) {
           assignedAt: new Date().toISOString(),
         },
       }));
-      let customerNotified = false;
+      let messageRecorded = false;
       if (selectedOrder.conversationId) {
         try {
-          await request("/api/whatsapp/send", {
+          await request(`/api/admin/conversations/${selectedOrder.conversationId}/messages`, {
             conversationId: selectedOrder.conversationId,
             body: `Tu pedido ${selectedOrder.number} fue asignado a ${driver.name}. Te avisaremos cuando inicie la ruta.`,
           });
-          customerNotified = true;
+          messageRecorded = true;
         } catch {
-          customerNotified = false;
+          messageRecorded = false;
         }
       }
-      setNotice(`Pedido asignado a ${driver.name}. OTP de entrega: ${result.otpCode}.${customerNotified ? " Cliente notificado." : " Aviso al cliente pendiente."}`);
+      setNotice(`Pedido asignado a ${driver.name}. OTP de entrega: ${result.otpCode}.${messageRecorded ? " Aviso registrado en la conversación." : " Aviso pendiente."}`);
       setSelectedOrderId(null);
       router.refresh();
     } catch (caught) {

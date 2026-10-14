@@ -1,11 +1,10 @@
 "use client";
 
-import { WhatsAppQrConnection } from "@/components/whatsapp-qr-connection";
 import { PwaInstallCard } from "@/components/pwa-install-card";
 import { NumericInput } from "@/components/numeric-input";
 import { Badge } from "@/components/ui";
 import type { AdminBootstrap, BusinessHour, CompanySettings } from "@/lib/operations/types";
-import { Bell, Buildings, CaretRight, ChatCenteredText, CheckCircle, GearSix, LockKey, Motorcycle, Plug, UsersThree, Wrench } from "@phosphor-icons/react";
+import { Bell, Buildings, CaretRight, CheckCircle, GearSix, LockKey, Motorcycle, Plug, UsersThree, Wrench } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,7 +12,6 @@ import { useState } from "react";
 const settingsItems = [
   { id: "empresa", label: "Empresa", icon: Buildings },
   { id: "usuarios", label: "Usuarios y permisos", icon: UsersThree },
-  { id: "whatsapp", label: "WhatsApp Business", icon: ChatCenteredText },
   { id: "operacion", label: "Operación", icon: GearSix },
   { id: "notificaciones", label: "Notificaciones", icon: Bell },
   { id: "motorizados", label: "App de motorizados", icon: Motorcycle },
@@ -30,11 +28,10 @@ type DayKey = typeof days[number][0];
 
 export function SettingsCenter({ data }: { data: AdminBootstrap }) {
   const router = useRouter();
-  const [active, setActive] = useState<ActiveSection>("whatsapp");
+  const [active, setActive] = useState<ActiveSection>("empresa");
   const [displayName, setDisplayName] = useState(data.company.name);
   const [city, setCity] = useState(data.company.city);
   const [phone, setPhone] = useState(data.company.phone ?? "");
-  const [welcomeMessage, setWelcomeMessage] = useState(data.whatsapp.welcomeMessage);
   const [settings, setSettings] = useState<CompanySettings>(data.settings);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -57,7 +54,7 @@ export function SettingsCenter({ data }: { data: AdminBootstrap }) {
       const response = await fetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName, city, phone: phone || null, welcomeMessage, ...settings }),
+        body: JSON.stringify({ displayName, city, phone: phone || null, ...settings }),
       });
       const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "No fue posible guardar la configuración.");
@@ -72,14 +69,13 @@ export function SettingsCenter({ data }: { data: AdminBootstrap }) {
   }
 
   const content = active === "empresa" ? <CompanySettings displayName={displayName} city={city} phone={phone} hours={settings.businessHours} onDisplayName={setDisplayName} onCity={setCity} onPhone={setPhone} onHour={updateHour} />
-    : active === "whatsapp" ? <WhatsAppSettings channel={data.whatsapp} welcomeMessage={welcomeMessage} onWelcomeMessage={setWelcomeMessage} />
-      : active === "operacion" ? <OperationSettings settings={settings} onUpdate={updateSettings} />
+    : active === "operacion" ? <OperationSettings settings={settings} onUpdate={updateSettings} />
         : active === "motorizados" ? <DriverSettings settings={settings} onUpdate={updateSettings} />
           : active === "flota" ? <FleetSettings settings={settings} onUpdate={updateSettings} />
             : active === "usuarios" ? <InfoCard title="Usuarios y permisos" description="Registra motorizados desde el módulo Motorizados. El dueño controla el acceso administrativo y cada motorizado entra con su propia cuenta PWA." rows={[["Propietario", "Control total de la empresa"], ["Operadores", "Atienden conversaciones y pedidos"], ["Motorizados", "Acceso exclusivo a la PWA"]]} />
-              : active === "notificaciones" ? <InfoCard title="Notificaciones" description="Las alertas de pedido, incidencias y mantenimiento se generan dentro del panel. WhatsApp se usa para conversar con clientes desde la bandeja." rows={[["Pedidos asignados", "Notificación en PWA"], ["Incidencias", "Panel de administración"], ["Mantenimientos", "Bloqueo de jornada al vencer"]]} />
+              : active === "notificaciones" ? <InfoCard title="Notificaciones" description="Las alertas de pedido, incidencias y mantenimiento se generan dentro del panel y la PWA." rows={[["Pedidos asignados", "Notificación en PWA"], ["Incidencias", "Panel de administración"], ["Mantenimientos", "Bloqueo de jornada al vencer"]]} />
                 : active === "seguridad" ? <InfoCard title="Seguridad" description="Las sesiones se autentican con Supabase. Las operaciones sensibles validan rol, empresa y origen antes de escribirse." rows={[["Aislamiento", "Una empresa no puede leer otra"], ["OTP", settings.otpDeliveryRequired ? "Obligatorio para entregar" : "Desactivado"], ["Auditoría", "Cambios críticos registrados"]]} />
-                  : <InfoCard title="Integraciones" description="Servicios conectados a la operación de esta empresa." rows={[["WhatsApp Business", data.whatsapp.connectionStatus === "connected" ? `Conectado: ${data.whatsapp.phoneNumber ?? "sesión vinculada"}` : "Pendiente de vincular por QR"], ["Mapas", "Google Maps + Directions API"], ["Base de datos", "Supabase (local o cloud)"]]} />;
+                  : <InfoCard title="Integraciones" description="Servicios conectados a la operación de esta empresa." rows={[["Mapas", "Google Maps + Directions API"], ["Base de datos", "Supabase (local o cloud)"], ["PWA", "Instalable en teléfonos y tablets"]]} />;
 
   return <div className="settings-layout">
     <aside className="settings-nav panel">
@@ -91,7 +87,7 @@ export function SettingsCenter({ data }: { data: AdminBootstrap }) {
       <div className="settings-help"><span>✓</span><div><strong>Datos protegidos</strong><p>Los cambios quedan aislados dentro de tu empresa.</p></div></div>
     </aside>
     <section className="settings-content panel">
-      <div className="settings-content-heading"><div><span className="eyebrow">CONFIGURACIÓN</span><h2>{selected.label}</h2><p>{active === "whatsapp" ? "Vincula el número que atenderá la bandeja de esta empresa." : "Ajusta las reglas permanentes de tu operación."}</p></div>{saved ? <Badge tone="green"><CheckCircle size={15} weight="fill" /> Cambios guardados</Badge> : null}</div>
+      <div className="settings-content-heading"><div><span className="eyebrow">CONFIGURACIÓN</span><h2>{selected.label}</h2><p>Ajusta las reglas permanentes de tu operación.</p></div>{saved ? <Badge tone="green"><CheckCircle size={15} weight="fill" /> Cambios guardados</Badge> : null}</div>
       {content}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       <div className="settings-save"><button className="button button-primary" type="button" onClick={() => { void save(); }} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button></div>
@@ -101,10 +97,6 @@ export function SettingsCenter({ data }: { data: AdminBootstrap }) {
 
 function CompanySettings({ displayName, city, phone, hours, onDisplayName, onCity, onPhone, onHour }: { displayName: string; city: string; phone: string; hours: CompanySettings["businessHours"]; onDisplayName: (value: string) => void; onCity: (value: string) => void; onPhone: (value: string) => void; onHour: (day: DayKey, patch: Partial<BusinessHour>) => void }) {
   return <div className="settings-stack"><section className="settings-card"><h3>Datos de empresa</h3><div className="form-grid"><label>Nombre comercial<input value={displayName} onChange={(event) => onDisplayName(event.target.value)} /></label><label>Ciudad<input value={city} onChange={(event) => onCity(event.target.value)} /></label><label>Teléfono de empresa<input type="tel" value={phone} onChange={(event) => onPhone(event.target.value)} placeholder="+505 0000 0000" /></label><label>Moneda<input value="C$ · Córdoba nicaragüense" disabled /></label></div></section><section className="settings-card"><h3>Horario de atención</h3><p className="panel-subtitle">Fuera de este horario podrás mostrar un mensaje de espera a clientes.</p><div className="business-hours">{days.map(([day, label]) => { const value = hours[day]; return <div className="business-hour-row" key={day}><label className="switch-label"><input type="checkbox" checked={value.enabled} onChange={(event) => onHour(day, { enabled: event.target.checked })} /><i /><span>{label}</span></label><input aria-label={`${label} inicia`} type="time" value={value.from} disabled={!value.enabled} onChange={(event) => onHour(day, { from: event.target.value })} /><span>a</span><input aria-label={`${label} termina`} type="time" value={value.to} disabled={!value.enabled} onChange={(event) => onHour(day, { to: event.target.value })} /></div>; })}</div></section></div>;
-}
-
-function WhatsAppSettings({ channel, welcomeMessage, onWelcomeMessage }: { channel: AdminBootstrap["whatsapp"]; welcomeMessage: string; onWelcomeMessage: (value: string) => void }) {
-  return <div className="settings-stack"><WhatsAppQrConnection /><section className="settings-card"><h3>Mensajes y atención</h3><p className="panel-subtitle">Este saludo se envía una vez cuando una persona inicia una conversación nueva.</p><label className="detail-note">Mensaje de bienvenida<textarea value={welcomeMessage} onChange={(event) => onWelcomeMessage(event.target.value)} maxLength={1024} /></label><div className="settings-info"><LockKey size={19} weight="fill" /> {channel.connectionStatus === "connected" ? `Número conectado: ${channel.phoneNumber ? `+${channel.phoneNumber}` : "sesión vinculada"}` : "Genera el QR y vincula WhatsApp Business para recibir y responder mensajes reales."}</div></section></div>;
 }
 
 function OperationSettings({ settings, onUpdate }: { settings: CompanySettings; onUpdate: (patch: Partial<CompanySettings>) => void }) {

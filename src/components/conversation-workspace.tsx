@@ -10,9 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { NumericInput } from "@/components/numeric-input";
 import { currency } from "@/lib/format";
 import type { AdminBootstrap, OperationalOrder } from "@/lib/operations/types";
-import { ArrowClockwise, ArrowRight, ChatCircleDots, CheckCircle, Compass, GasPump, MagnifyingGlass, MapPin, Motorcycle, PaperPlaneTilt, Plus, QrCode, Star, UserPlus } from "@phosphor-icons/react";
+import { ArrowClockwise, ChatCircleDots, CheckCircle, Compass, GasPump, MagnifyingGlass, MapPin, Motorcycle, PaperPlaneTilt, Plus, Star, UserPlus } from "@phosphor-icons/react";
 import clsx from "clsx";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -187,7 +186,7 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
 
   async function sendConversationMessage(body: string) {
     if (!active) throw new Error("Selecciona una conversación.");
-    await request("/api/whatsapp/send", { conversationId: active.id, body });
+    await request(`/api/admin/conversations/${active.id}/messages`, { body });
     appendOutgoingMessage(body);
   }
 
@@ -214,7 +213,7 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
     try {
       await sendConversationMessage(confirmationMessage({ number: currentOrder.number, total: currentOrder.total }));
       setConfirmationSent(true);
-      setNotice("Resumen enviado. Espera la confirmación del cliente antes de asignar.");
+      setNotice("Resumen registrado en la conversación. Espera la confirmación del cliente antes de asignar.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No fue posible enviar el resumen al cliente.");
     } finally {
@@ -276,10 +275,10 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
       try {
         await sendConversationMessage(confirmationMessage(result));
         setConfirmationSent(true);
-        setNotice("Pedido creado y resumen enviado. Espera que el cliente confirme.");
+        setNotice("Pedido creado y resumen registrado. Espera que el cliente confirme.");
       } catch {
         setConfirmationSent(false);
-        setError("El pedido quedó creado, pero no se pudo enviar el resumen. Usa “Reenviar resumen”.");
+        setError("El pedido quedó creado, pero no se pudo registrar el resumen. Usa “Reenviar resumen”.");
       }
       router.refresh();
     } catch (caught) {
@@ -323,7 +322,7 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
       setOtp({ code: result.otpCode, expiresAt: result.expiresAt });
       try {
         await sendConversationMessage(`Tu pedido ${currentOrder.number} fue asignado a ${driver?.name ?? "un motorizado"}. Te avisaremos cuando inicie la ruta.`);
-        setNotice("Motorizado asignado y cliente notificado.");
+        setNotice("Motorizado asignado y aviso registrado en la conversación.");
       } catch {
         setNotice("Motorizado asignado. La notificación al cliente quedó pendiente.");
       }
@@ -370,18 +369,17 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
   }
 
   if (!active) {
-    const connected = data.whatsapp.connectionStatus === "connected";
     return <>
       <div className="grid min-h-[620px] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[320px_1fr]">
         <aside className="flex flex-col border-b border-slate-200 bg-slate-50/60 p-5 lg:border-r lg:border-b-0">
-          <div className="flex items-center justify-between"><div><h2 className="text-lg font-bold tracking-tight text-slate-950">Conversaciones</h2><p className="mt-1 text-xs text-slate-500">WhatsApp Business</p></div><Button variant="outline" size="icon" onClick={() => setDialog("conversation")} aria-label="Nueva conversación"><Plus /></Button></div>
+          <div className="flex items-center justify-between"><div><h2 className="text-lg font-bold tracking-tight text-slate-950">Conversaciones</h2><p className="mt-1 text-xs text-slate-500">Atención al cliente</p></div><Button variant="outline" size="icon" onClick={() => setDialog("conversation")} aria-label="Nueva conversación"><Plus /></Button></div>
           <div className="my-auto py-10 text-center"><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200"><ChatCircleDots size={25} weight="duotone" /></span><h3 className="mt-4 text-sm font-bold text-slate-900">Aún no hay chats</h3><p className="mx-auto mt-2 max-w-56 text-xs leading-5 text-slate-500">Los mensajes nuevos aparecerán aquí, separados por cliente.</p></div>
           <Button className="h-10 w-full bg-emerald-700 hover:bg-emerald-800" onClick={() => setDialog("conversation")}>Registrar solicitud manual</Button>
         </aside>
         <main className="grid place-items-center bg-[radial-gradient(circle_at_center,#f0fbf5,transparent_32rem)] p-6 sm:p-12">
           <Card className="w-full max-w-xl border-emerald-100 bg-white/95 shadow-xl shadow-emerald-950/5">
-            <CardHeader className="items-center text-center"><span className="grid size-16 place-items-center rounded-3xl bg-emerald-50 text-emerald-700"><QrCode size={34} weight="duotone" /></span><CardTitle className="mt-3 text-2xl font-bold tracking-tight text-slate-950">{connected ? "Tu bandeja está conectada" : "Conecta el WhatsApp de tu negocio"}</CardTitle><CardDescription className="max-w-md text-sm leading-6">{connected ? "La conexión está activa. En cuanto un cliente escriba, su conversación aparecerá aquí sin registrarla manualmente." : "Escanea un código QR desde WhatsApp Business. No necesitas registrar cada chat ni copiar mensajes a mano."}</CardDescription></CardHeader>
-            <CardContent className="grid gap-3 pb-6 sm:grid-cols-2"><Button className="h-11 bg-emerald-700 hover:bg-emerald-800" asChild><Link href="/admin/configuracion?section=whatsapp">{connected ? "Ver conexión" : "Escanear código QR"}<ArrowRight /></Link></Button><Button className="h-11" variant="outline" onClick={() => setDialog("conversation")}>Probar con una solicitud</Button></CardContent>
+            <CardHeader className="items-center text-center"><span className="grid size-16 place-items-center rounded-3xl bg-emerald-50 text-emerald-700"><ChatCircleDots size={34} weight="duotone" /></span><CardTitle className="mt-3 text-2xl font-bold tracking-tight text-slate-950">Bandeja lista para operar</CardTitle><CardDescription className="max-w-md text-sm leading-6">Registra solicitudes de clientes y conviértelas en pedidos desde un solo lugar.</CardDescription></CardHeader>
+            <CardContent className="pb-6"><Button className="h-11 w-full bg-emerald-700 hover:bg-emerald-800" onClick={() => setDialog("conversation")}>Registrar solicitud manual</Button></CardContent>
           </Card>
         </main>
       </div>
@@ -392,7 +390,7 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
   const state = currentOrder ? orderState[currentOrder.status] : { label: "Sin pedido", tone: "neutral" as const };
   return <div className="conversation-workspace">
     <section className="inbox-list-panel">
-      <div className="inbox-list-heading"><div><h2>Conversaciones</h2><p>WhatsApp Business</p></div><button className="icon-button" type="button" onClick={() => setDialog("conversation")} aria-label="Nueva conversación"><Plus size={20} /></button></div>
+      <div className="inbox-list-heading"><div><h2>Conversaciones</h2><p>Atención al cliente</p></div><button className="icon-button" type="button" onClick={() => setDialog("conversation")} aria-label="Nueva conversación"><Plus size={20} /></button></div>
       <label className="search-field"><MagnifyingGlass size={19} /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar conversaciones…" /></label>
       <div className="conversation-tabs"><button className={clsx("tab", conversationFilter === "all" && "active")} type="button" onClick={() => setConversationFilter("all")}>Todas <span>{data.conversations.length}</span></button><button className={clsx("tab", conversationFilter === "unattended" && "active")} type="button" onClick={() => setConversationFilter("unattended")}>Sin pedido <span>{data.conversations.filter((conversation) => !conversation.hasOrder).length}</span></button><button className={clsx("tab", conversationFilter === "with_order" && "active")} type="button" onClick={() => setConversationFilter("with_order")}>Con pedido</button></div>
       <div className="conversation-list">{filteredConversations.map((conversation) => <button type="button" onClick={() => selectConversation(conversation.id)} className={clsx("conversation-item", activeId === conversation.id && "selected")} key={conversation.id}><Avatar initials={conversation.customerName.split(" ").map((part) => part[0]).join("").slice(0, 2)} tone={conversation.hasOrder ? "mint" : "purple"} /><span className="conversation-copy"><span><strong>{conversation.customerName}</strong><time>{conversation.lastMessageAt ? formatTime(conversation.lastMessageAt) : ""}</time></span><small>{conversation.lastMessage}</small></span>{!conversation.hasOrder ? <b className="unread-count">!</b> : null}</button>)}</div>
@@ -400,7 +398,7 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
     <section className="chat-panel">
       <header className="chat-header"><Avatar initials={initials} tone="mint" /><div><h2>{active.customerName}</h2><p>{active.phone} · <span className="online-dot" /> Conversación activa</p></div><button className="button button-secondary button-small" type="button"><MapPin size={17} /> Ver ubicación</button></header>
       <div className="chat-thread"><p className="chat-date">CONVERSACIÓN</p>{messagesLoading ? <p className="chat-date">Cargando mensajes…</p> : null}{!messagesLoading && messages.length === 0 ? <><div className="message-bubble incoming">{active.lastMessage}</div><span className="message-time incoming-time">{active.lastMessageAt ? formatTime(active.lastMessageAt) : ""}</span></> : messages.map((message) => <div key={message.id} className={clsx("message-bubble", message.direction === "outbound" ? "outgoing" : "incoming")}><span>{message.body || "Contenido multimedia"}</span><small className={clsx("message-time", message.direction === "outbound" ? "outgoing-time" : "incoming-time")}>{formatTime(message.sentAt)}</small></div>)}{currentOrder ? <div className="chat-order-note"><CheckCircle size={18} weight="fill" /><span><strong>Pedido {currentOrder.number}</strong><small>{state.label} · {currency(currentOrder.total)}</small></span></div> : null}</div>
-      <div className="chat-composer"><input aria-label="Escribe un mensaje" value={messageDraft} onChange={(event) => setMessageDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Escribe una respuesta para WhatsApp" disabled={busy} /><button className="icon-button primary-icon" type="button" onClick={() => { void sendMessage(); }} disabled={busy || !messageDraft.trim()} aria-label="Enviar mensaje"><PaperPlaneTilt size={20} weight="fill" /></button></div>
+      <div className="chat-composer"><input aria-label="Escribe un mensaje" value={messageDraft} onChange={(event) => setMessageDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); } }} placeholder="Escribe una respuesta al cliente" disabled={busy} /><button className="icon-button primary-icon" type="button" onClick={() => { void sendMessage(); }} disabled={busy || !messageDraft.trim()} aria-label="Enviar mensaje"><PaperPlaneTilt size={20} weight="fill" /></button></div>
     </section>
     <aside className="order-draft-panel">
       <div className="order-draft-heading"><div><p>CONVERSACIÓN A PEDIDO</p><h2>{currentOrder ? currentOrder.number : "Nuevo pedido"}</h2></div><Badge tone={state.tone}>{state.label}</Badge></div>
@@ -437,5 +435,5 @@ export function ConversationWorkspace({ data }: { data: AdminBootstrap }) {
 }
 
 function ConversationDialog({ onClose, onSave, saving, error }: { onClose: () => void; onSave: (data: FormData) => Promise<void>; saving: boolean; error: string | null }) {
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className="border-0 p-0 shadow-2xl sm:max-w-lg"><DialogHeader className="border-b border-slate-100 px-6 py-5 text-left"><p className="text-[11px] font-extrabold tracking-[.14em] text-emerald-700">SOLICITUD MANUAL</p><DialogTitle className="text-2xl font-bold tracking-tight">Registrar conversación</DialogTitle><DialogDescription>Para pedidos recibidos por llamada o para probar el flujo antes de conectar WhatsApp.</DialogDescription></DialogHeader><form className="grid gap-4 px-6 pb-6" action={onSave}><div className="grid gap-2"><Label>Nombre del cliente</Label><Input className="h-10" name="fullName" required placeholder="Nombre completo" /></div><div className="grid gap-2"><Label>Teléfono</Label><Input className="h-10" name="phone" type="tel" required placeholder="+505 8888 0000" /></div><div className="grid gap-2"><Label>Solicitud inicial</Label><Textarea className="min-h-28 resize-none" name="message" required placeholder="Ej. Quiero un pollo asado de El Masayita" /></div>{error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">{error}</p> : null}<DialogFooter className="mx-0 mb-0 bg-transparent px-0 pb-0"><Button variant="outline" type="button" onClick={onClose}>Cancelar</Button><Button className="bg-emerald-700 hover:bg-emerald-800" type="submit" disabled={saving}>{saving ? "Guardando…" : "Crear conversación"}</Button></DialogFooter></form></DialogContent></Dialog>;
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className="border-0 p-0 shadow-2xl sm:max-w-lg"><DialogHeader className="border-b border-slate-100 px-6 py-5 text-left"><p className="text-[11px] font-extrabold tracking-[.14em] text-emerald-700">SOLICITUD MANUAL</p><DialogTitle className="text-2xl font-bold tracking-tight">Registrar conversación</DialogTitle><DialogDescription>Registra la solicitud de un cliente y conviértela en un pedido.</DialogDescription></DialogHeader><form className="grid gap-4 px-6 pb-6" action={onSave}><div className="grid gap-2"><Label>Nombre del cliente</Label><Input className="h-10" name="fullName" required placeholder="Nombre completo" /></div><div className="grid gap-2"><Label>Teléfono</Label><Input className="h-10" name="phone" type="tel" required placeholder="+505 8888 0000" /></div><div className="grid gap-2"><Label>Solicitud inicial</Label><Textarea className="min-h-28 resize-none" name="message" required placeholder="Ej. Quiero un pollo asado de El Masayita" /></div>{error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700" role="alert">{error}</p> : null}<DialogFooter className="mx-0 mb-0 bg-transparent px-0 pb-0"><Button variant="outline" type="button" onClick={onClose}>Cancelar</Button><Button className="bg-emerald-700 hover:bg-emerald-800" type="submit" disabled={saving}>{saving ? "Guardando…" : "Crear conversación"}</Button></DialogFooter></form></DialogContent></Dialog>;
 }

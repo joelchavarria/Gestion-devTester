@@ -194,6 +194,7 @@ export type AdminBootstrap = {
 
 export type DriverBootstrap = {
   companyName: string;
+  settings: Pick<CompanySettings, "otpDeliveryRequired">;
   driver: OperationalDriver;
   openShift: OperationalShift | null;
   activeOrder: OperationalOrder | null;

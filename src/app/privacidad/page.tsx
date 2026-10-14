@@ -13,8 +13,8 @@ export default function PrivacyPage() {
         {
           title: "1. Responsable y alcance",
           paragraphs: [
-            "Tudelivery es una plataforma operada por DevTesters Delivery's para gestionar empresas de delivery, sus administradores, operadores, motorizados, clientes, vehículos, pedidos y comunicaciones de WhatsApp Business.",
-            "Cada empresa mantiene sus datos separados de los de otras empresas. La empresa usuaria es responsable de contar con una base válida para atender a sus clientes y operar sus números de WhatsApp Business.",
+            "Tudelivery es una plataforma operada por DevTesters Delivery's para gestionar empresas de delivery, sus administradores, operadores, motorizados, clientes, vehículos y pedidos.",
+            "Cada empresa mantiene sus datos separados de los de otras empresas y es responsable de contar con una base válida para atender a sus clientes.",
           ],
         },
         {
@@ -24,7 +24,7 @@ export default function PrivacyPage() {
             "Datos operativos: pedidos, direcciones, referencias, tarifas, pagos, incidencias y códigos de entrega.",
             "Datos de flota: vehículos, kilometraje, combustible, mantenimiento y jornadas.",
             "Ubicación del motorizado únicamente durante pedidos aceptados y jornadas activas.",
-            "Mensajes y metadatos necesarios para atender conversaciones de WhatsApp Business.",
+            "Mensajes y metadatos necesarios para atender conversaciones y solicitudes de clientes.",
           ]}
         ,
         {
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
           items: [
             "Autenticar usuarios y separar la información por empresa.",
             "Crear, asignar, rastrear y completar pedidos.",
-            "Atender conversaciones, enviar actualizaciones y gestionar WhatsApp Business.",
+            "Atender conversaciones, registrar solicitudes y enviar actualizaciones operativas.",
             "Controlar jornadas, combustible, kilometraje, mantenimiento e incidencias.",
             "Proteger la plataforma, investigar fallos y prevenir usos indebidos.",
           ],
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
         {
           title: "4. Proveedores y transferencias",
           paragraphs: [
-            "Utilizamos proveedores técnicos necesarios para prestar el servicio, entre ellos Meta/WhatsApp para mensajería, Supabase para base de datos y autenticación, Vercel para alojamiento y proveedores de mapas cuando estén habilitados. Cada proveedor procesa información bajo sus propias condiciones y medidas de seguridad.",
+            "Utilizamos proveedores técnicos necesarios para prestar el servicio, entre ellos Supabase para base de datos y autenticación, Vercel para alojamiento y proveedores de mapas cuando estén habilitados. Cada proveedor procesa información bajo sus propias condiciones y medidas de seguridad.",
           ],
         },
         {

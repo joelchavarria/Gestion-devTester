@@ -31,12 +31,6 @@ export default function DataDeletionPage() {
             "Responderemos y procesaremos la solicitud dentro de un plazo razonable. Podemos conservar registros mínimos cuando sean necesarios para seguridad, prevención de fraude, resolución de disputas u obligaciones legales.",
           ],
         },
-        {
-          title: "Desconectar WhatsApp",
-          paragraphs: [
-            "El administrador puede desconectar la cuenta de WhatsApp Business desde Configuración. La desconexión de Tudelivery no elimina automáticamente la cuenta o el número dentro de Meta Business Manager.",
-          ],
-        },
       ]}
     />
   );

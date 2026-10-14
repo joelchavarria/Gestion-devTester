@@ -20,8 +20,9 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
   const needsSession = protectedPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
+  if (!needsSession) return response;
+  const { data: { user } } = await supabase.auth.getUser();
   if (needsSession && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";

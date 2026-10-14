@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertSameOrigin } from "@/lib/server/context";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -12,6 +13,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
+    assertSameOrigin(request);
     const input = schema.parse(await request.json());
     const supabase = await createSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

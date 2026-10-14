@@ -26,7 +26,6 @@ const schema = z.object({
   gpsSharingMode: z.enum(["active_orders_only", "active_shift"]),
   allowOperatorPriceOverride: z.boolean(),
   cancellationAfterPurchaseRule: z.enum(["none", "product_only", "product_management", "product_management_delivery", "manual"]),
-  welcomeMessage: z.string().trim().min(1).max(1024),
 });
 
 export async function PUT(request: Request) {
@@ -36,7 +35,7 @@ export async function PUT(request: Request) {
     const context = await requireOwnerContext();
     const admin = createSupabaseAdminClient();
     const now = new Date().toISOString();
-    const [companyResult, settingsResult, whatsappResult] = await Promise.all([
+    const [companyResult, settingsResult] = await Promise.all([
       admin.from("companies").update({ display_name: input.displayName, city: input.city, phone: input.phone || null, updated_at: now }).eq("id", context.companyId),
       admin.from("company_settings").update({
         business_hours: input.businessHours,
@@ -49,11 +48,9 @@ export async function PUT(request: Request) {
         cancellation_after_purchase_rule: input.cancellationAfterPurchaseRule,
         updated_at: now,
       }).eq("company_id", context.companyId),
-      admin.from("whatsapp_accounts").update({ welcome_message: input.welcomeMessage, updated_at: now }).eq("company_id", context.companyId),
     ]);
     if (companyResult.error) throw companyResult.error;
     if (settingsResult.error) throw settingsResult.error;
-    if (whatsappResult.error) throw whatsappResult.error;
     await admin.from("audit_logs").insert({ company_id: context.companyId, actor_id: context.userId, action: "company_settings_updated", entity_type: "company_settings", entity_id: context.companyId, after_data: { ...input, phone: input.phone || null } });
     return Response.json({ saved: true });
   } catch (error) {
