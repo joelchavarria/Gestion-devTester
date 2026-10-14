@@ -22,7 +22,18 @@ export function LiveMapClient({ bootstrap }: { bootstrap: AdminBootstrap }) {
     return bootstrap.orders.filter((order) => ["assigned", "to_merchant", "picking_up", "to_customer"].includes(order.status));
   }, [bootstrap]);
   const selectedOrder = activeOrders.find((order) => order.id === selectedId) ?? activeOrders[0] ?? null;
-  const selectedLocation = selectedOrder ? [...locations].sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt)).find((location) => location.orderId === selectedOrder.id) ?? null : null;
+  const latestLocationByOrder = useMemo(() => {
+    const latest = new Map<string, OperationalLocation>();
+    for (const location of locations) {
+      if (!location.orderId) continue;
+      const previous = latest.get(location.orderId);
+      if (!previous || Date.parse(location.capturedAt) > Date.parse(previous.capturedAt)) {
+        latest.set(location.orderId, location);
+      }
+    }
+    return latest;
+  }, [locations]);
+  const selectedLocation = selectedOrder ? latestLocationByOrder.get(selectedOrder.id) ?? null : null;
 
   useEffect(() => {
     if (!bootstrap.company.id) return;
@@ -39,7 +50,7 @@ export function LiveMapClient({ bootstrap }: { bootstrap: AdminBootstrap }) {
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "route_alerts", filter: `company_id=eq.${bootstrap.company.id}` }, (payload: RealtimePostgresInsertPayload<AlertInsert>) => {
         const row = payload.new;
-        setAlerts((current) => [{ id: row.id, orderId: row.order_id, driverId: row.driver_id, kind: row.kind, thresholdM: row.threshold_m, distanceM: row.distance_m, status: row.status, createdAt: row.created_at }, ...current]);
+        setAlerts((current) => [{ id: row.id, orderId: row.order_id, driverId: row.driver_id, kind: row.kind, thresholdM: row.threshold_m, distanceM: row.distance_m, status: row.status, createdAt: row.created_at }, ...current].slice(0, 100));
       })
       .subscribe();
     return () => { void client.removeChannel(channel); };

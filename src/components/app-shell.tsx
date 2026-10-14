@@ -50,7 +50,7 @@ export function AdminShell({ children, companyName, whatsappConnected, profile }
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link className="brand" href="/admin" aria-label="Ir al inicio de Tudelivery">
+        <Link className="brand" href="/admin" prefetch={false} aria-label="Ir al inicio de Tudelivery">
           <span className="brand-mark"><Motorcycle size={28} weight="fill" /></span>
           <span>
             <strong>Tudelivery</strong>
@@ -62,8 +62,8 @@ export function AdminShell({ children, companyName, whatsappConnected, profile }
           {navigation.map((item) => {
             const selected = item.href === "/admin" ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.icon;
-            return (
-              <Link key={item.href} className={clsx("nav-link", selected && "is-active")} href={item.href}>
+              return (
+              <Link key={item.href} className={clsx("nav-link", selected && "is-active")} href={item.href} prefetch={false}>
                 <Icon size={21} weight={selected ? "fill" : "regular"} />
                 <span>{item.label}</span>
                 {item.dot ? <span className="nav-dot" aria-label="Nuevos mensajes" /> : null}
@@ -86,7 +86,7 @@ export function AdminShell({ children, companyName, whatsappConnected, profile }
             <CaretDown size={16} />
           </button>
           <div className="topbar-actions">
-            <Link className="whatsapp-status" href="/admin/configuracion" title="Abrir configuración de WhatsApp"><span className={whatsappConnected ? "" : "is-offline"} /> {whatsappConnected ? "WhatsApp conectado" : "WhatsApp pendiente"}</Link>
+            <Link className="whatsapp-status" href="/admin/configuracion" prefetch={false} title="Abrir configuración de WhatsApp"><span className={whatsappConnected ? "" : "is-offline"} /> {whatsappConnected ? "WhatsApp conectado" : "WhatsApp pendiente"}</Link>
             <NotificationCenter />
             <div className="profile-menu-wrap">
               <button className="user-menu" type="button" aria-expanded={profileOpen} onClick={() => setProfileOpen((current) => !current)}>
@@ -94,7 +94,7 @@ export function AdminShell({ children, companyName, whatsappConnected, profile }
                 <span className="user-copy"><strong>{profile.name}</strong><small>{profile.role}</small></span>
                 <CaretDown size={16} />
               </button>
-              {profileOpen ? <div className="profile-popover"><div><span className="avatar avatar-navy">{profile.initials}</span><p><strong>{profile.name}</strong><small>{companyName} · {profile.role}</small></p></div><Link href="/admin/configuracion" onClick={() => setProfileOpen(false)}>Configuración de la cuenta</Link><Link href="/admin/configuracion" onClick={() => setProfileOpen(false)}>Datos de la empresa</Link><button type="button" onClick={() => { void logout(); }}>Cerrar sesión</button></div> : null}
+              {profileOpen ? <div className="profile-popover"><div><span className="avatar avatar-navy">{profile.initials}</span><p><strong>{profile.name}</strong><small>{companyName} · {profile.role}</small></p></div><Link href="/admin/configuracion" prefetch={false} onClick={() => setProfileOpen(false)}>Configuración de la cuenta</Link><Link href="/admin/configuracion" prefetch={false} onClick={() => setProfileOpen(false)}>Datos de la empresa</Link><button type="button" onClick={() => { void logout(); }}>Cerrar sesión</button></div> : null}
             </div>
           </div>
         </header>

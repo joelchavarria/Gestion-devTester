@@ -3,6 +3,6 @@ import { requireOwnerPageContext } from "@/lib/server/context";
 import { getAdminBootstrap } from "@/lib/server/operations";
 
 export default async function ReportsPage() {
-  const data = await getAdminBootstrap(await requireOwnerPageContext());
+  const data = await getAdminBootstrap(await requireOwnerPageContext(), "reports");
   return <ReportsManager data={data} />;
 }

@@ -4,6 +4,6 @@ import { requireOwnerPageContext } from "@/lib/server/context";
 import { getAdminBootstrap } from "@/lib/server/operations";
 
 export default async function SettingsPage() {
-  const data = await getAdminBootstrap(await requireOwnerPageContext());
+  const data = await getAdminBootstrap(await requireOwnerPageContext(), "settings");
   return <><PageHeader title="Configuración" description="Administra los ajustes de tu empresa y operación." /><SettingsCenter data={data} /></>;
 }

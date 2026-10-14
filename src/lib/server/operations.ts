@@ -152,25 +152,30 @@ function mapDriver(
   };
 }
 
-export async function getAdminBootstrap(context: CompanyContext): Promise<AdminBootstrap> {
+export type AdminBootstrapScope = "all" | "dashboard" | "conversations" | "orders" | "map" | "incidents" | "vehicles" | "tariffs" | "settings" | "reports";
+
+export async function getAdminBootstrap(context: CompanyContext, scope: AdminBootstrapScope = "all"): Promise<AdminBootstrap> {
   const admin = createSupabaseAdminClient();
+  const loadAll = scope === "all";
+  const needs = (...scopes: AdminBootstrapScope[]) => loadAll || scopes.includes(scope);
+  const empty = () => Promise.resolve({ data: [] as never[], error: null });
   const [companyResult, settingsResult, zonesResult, vehiclesResult, driversResult, shiftsResult, closedShiftsResult, fuelResult, maintenanceResult, ordersResult, customersResult, conversationsResult, incidentsResult, locationsResult, routesResult, alertsResult, whatsappResult] = await Promise.all([
     admin.from("companies").select("id, display_name, city, phone, email").eq("id", context.companyId).single(),
     admin.from("company_settings").select("business_hours, maintenance_interval_km, base_management_fee, route_deviation_threshold_m, otp_delivery_required, gps_sharing_mode, allow_operator_price_override, cancellation_after_purchase_rule").eq("company_id", context.companyId).single(),
-    admin.from("service_zones").select("id, name, delivery_fee, minimum_fee, is_active").eq("company_id", context.companyId).order("sort_order"),
-    admin.from("vehicles").select("*").eq("company_id", context.companyId).order("created_at", { ascending: false }),
-    admin.from("driver_profiles").select("*").eq("company_id", context.companyId).order("created_at", { ascending: false }),
-    admin.from("driver_shifts").select("*").eq("company_id", context.companyId).is("ended_at", null),
-    admin.from("driver_shifts").select("start_odometer_km, end_odometer_km").eq("company_id", context.companyId).not("ended_at", "is", null).limit(1000),
-    admin.from("fuel_logs").select("amount, liters").eq("company_id", context.companyId).limit(1000),
-    admin.from("maintenance_records").select("id, vehicle_id, kind, status, due_at_km, due_date, completed_at, odometer_km, cost, supplier, notes").eq("company_id", context.companyId).order("created_at", { ascending: false }).limit(200),
-    admin.from("orders").select("*").eq("company_id", context.companyId).order("created_at", { ascending: false }).limit(200),
-    admin.from("customers").select("*").eq("company_id", context.companyId),
-    admin.from("conversations").select("*").eq("company_id", context.companyId).order("last_message_at", { ascending: false, nullsFirst: false }).limit(100),
-    admin.from("incidents").select("*").eq("company_id", context.companyId).order("created_at", { ascending: false }).limit(100),
-    admin.from("gps_locations").select("id, order_id, driver_id, latitude, longitude, accuracy_m, speed_kmh, heading, captured_at").eq("company_id", context.companyId).order("captured_at", { ascending: false }).limit(1000),
-    admin.from("order_routes").select("order_id, driver_id, origin_latitude, origin_longitude, destination_latitude, destination_longitude, encoded_polyline, distance_m, duration_s").eq("company_id", context.companyId),
-    admin.from("route_alerts").select("id, order_id, driver_id, kind, threshold_m, distance_m, status, created_at").eq("company_id", context.companyId).order("created_at", { ascending: false }).limit(50),
+    needs("conversations", "tariffs") ? admin.from("service_zones").select("id, name, delivery_fee, minimum_fee, is_active").eq("company_id", context.companyId).order("sort_order") : empty(),
+    needs("dashboard", "conversations", "orders", "reports", "vehicles") ? admin.from("vehicles").select("id, company_id, code, plate, make, model, model_year, fuel_type, current_odometer_km, fuel_level_percent, status, next_maintenance_km, created_at").eq("company_id", context.companyId).order("created_at", { ascending: false }) : empty(),
+    needs("dashboard", "conversations", "orders", "reports", "vehicles", "map", "incidents") ? admin.from("driver_profiles").select("id, company_id, user_id, assigned_vehicle_id, license_number, rating, is_available, invite_status, created_at").eq("company_id", context.companyId).order("created_at", { ascending: false }) : empty(),
+    needs("dashboard", "conversations", "orders", "reports", "vehicles") ? admin.from("driver_shifts").select("id, company_id, driver_id, vehicle_id, started_at, start_odometer_km, fuel_level_start, opening_cash, ended_at, end_odometer_km, fuel_level_end, closing_cash, notes, status, created_at").eq("company_id", context.companyId).is("ended_at", null) : empty(),
+    needs("reports") ? admin.from("driver_shifts").select("start_odometer_km, end_odometer_km").eq("company_id", context.companyId).not("ended_at", "is", null).limit(1000) : empty(),
+    needs("reports") ? admin.from("fuel_logs").select("amount, liters").eq("company_id", context.companyId).limit(1000) : empty(),
+    needs("dashboard", "reports", "vehicles") ? admin.from("maintenance_records").select("id, vehicle_id, kind, status, due_at_km, due_date, completed_at, odometer_km, cost, supplier, notes").eq("company_id", context.companyId).order("created_at", { ascending: false }).limit(200) : empty(),
+    needs("dashboard", "conversations", "orders", "reports", "map", "incidents") ? admin.from("orders").select("id, company_id, order_number, conversation_id, customer_id, service_type, merchant_name, merchant_address, delivery_address, delivery_reference, delivery_latitude, delivery_longitude, status, priority, payment_method, transfer_status, product_amount, management_fee, delivery_fee, total_amount, amount_received, change_due, driver_id, created_at, assigned_at, delivered_at").eq("company_id", context.companyId).order("created_at", { ascending: false }).limit(200) : empty(),
+    needs("dashboard", "conversations", "orders", "reports", "incidents", "map") ? admin.from("customers").select("id, company_id, full_name, phone, notes, created_at, updated_at").eq("company_id", context.companyId) : empty(),
+    needs("dashboard", "conversations") ? admin.from("conversations").select("id, company_id, customer_id, status, last_message_at, created_at, updated_at").eq("company_id", context.companyId).order("last_message_at", { ascending: false, nullsFirst: false }).limit(100) : empty(),
+    needs("dashboard", "reports", "incidents") ? admin.from("incidents").select("id, company_id, incident_number, order_id, driver_id, title, description, priority, status, resolution, created_at, updated_at").eq("company_id", context.companyId).order("created_at", { ascending: false }).limit(100) : empty(),
+    needs("map") ? admin.from("gps_locations").select("id, order_id, driver_id, latitude, longitude, accuracy_m, speed_kmh, heading, captured_at").eq("company_id", context.companyId).order("captured_at", { ascending: false }).limit(1000) : empty(),
+    needs("map") ? admin.from("order_routes").select("order_id, driver_id, origin_latitude, origin_longitude, destination_latitude, destination_longitude, encoded_polyline, distance_m, duration_s").eq("company_id", context.companyId) : empty(),
+    needs("map") ? admin.from("route_alerts").select("id, order_id, driver_id, kind, threshold_m, distance_m, status, created_at").eq("company_id", context.companyId).order("created_at", { ascending: false }).limit(50) : empty(),
     admin.from("whatsapp_accounts").select("provider, connection_status, phone_number, welcome_message").eq("company_id", context.companyId).maybeSingle(),
   ]);
 
@@ -191,11 +196,11 @@ export async function getAdminBootstrap(context: CompanyContext): Promise<AdminB
   const conversationIds = conversationRows.map((conversation) => conversation.id);
   const [profileResult, messageResult] = await Promise.all([
     driverUserIds.length
-      ? admin.from("profiles").select("*").in("id", driverUserIds)
+      ? admin.from("profiles").select("id, full_name, phone, avatar_url, created_at, updated_at").in("id", driverUserIds)
       : Promise.resolve({ data: [] as ProfileRow[], error: null }),
-    conversationIds.length
-      ? admin.from("messages").select("*").eq("company_id", context.companyId).in("conversation_id", conversationIds).order("sent_at", { ascending: false }).limit(500)
-      : Promise.resolve({ data: [] as MessageRow[], error: null }),
+    conversationIds.length && needs("conversations")
+      ? admin.from("messages").select("id, conversation_id, body, sent_at").eq("company_id", context.companyId).in("conversation_id", conversationIds).order("sent_at", { ascending: false }).limit(500)
+      : empty(),
   ]);
   const profileRows = unwrap(profileResult) as ProfileRow[];
   const messageRows = unwrap(messageResult) as MessageRow[];
@@ -375,6 +380,53 @@ export async function getAdminBootstrap(context: CompanyContext): Promise<AdminB
       notes: record.notes,
     })),
   };
+}
+
+/**
+ * Data required by the drivers screen only.
+ *
+ * Keep this separate from getAdminBootstrap: the drivers screen must not wait
+ * for conversations, GPS history, routes, reports and WhatsApp data that it
+ * never renders.
+ */
+export async function getDriversPageData(context: CompanyContext): Promise<OperationalDriver[]> {
+  const admin = createSupabaseAdminClient();
+  const activeStatuses: OrderRow["status"][] = ["assigned", "to_merchant", "picking_up", "to_customer"];
+  const today = startOfTodayManagua();
+  const [driversResult, shiftsResult, vehiclesResult, activeOrdersResult, deliveredOrdersResult] = await Promise.all([
+    admin.from("driver_profiles").select("id, company_id, user_id, assigned_vehicle_id, license_number, rating, is_available, invite_status, created_at").eq("company_id", context.companyId).order("created_at", { ascending: false }),
+    admin.from("driver_shifts").select("id, company_id, driver_id, vehicle_id, started_at, start_odometer_km, fuel_level_start, opening_cash, ended_at, status").eq("company_id", context.companyId).is("ended_at", null),
+    admin.from("vehicles").select("id, company_id, code, plate, make, model, model_year, fuel_type, current_odometer_km, fuel_level_percent, status, next_maintenance_km, created_at").eq("company_id", context.companyId).order("created_at", { ascending: false }),
+    admin.from("orders").select("driver_id, status").eq("company_id", context.companyId).in("status", activeStatuses),
+    admin.from("orders").select("driver_id").eq("company_id", context.companyId).eq("status", "delivered").gte("delivered_at", today),
+  ]);
+
+  const driverRows = unwrap(driversResult) as DriverRow[];
+  const shiftRows = unwrap(shiftsResult) as ShiftRow[];
+  const vehicles = unwrap(vehiclesResult) as VehicleRow[];
+  const driverUserIds = driverRows.map((driver) => driver.user_id);
+  const profileResult = driverUserIds.length
+    ? await admin.from("profiles").select("id, full_name, phone").in("id", driverUserIds)
+    : { data: [] as ProfileRow[], error: null };
+  const profiles = unwrap(profileResult) as ProfileRow[];
+  const profilesByUserId = new Map(profiles.map((profile) => [profile.id, profile]));
+  const vehiclesById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+  const shiftsByDriver = new Map(shiftRows.map((shift) => [shift.driver_id, shift]));
+  const busyDriverIds = new Set((unwrap(activeOrdersResult) as Array<Pick<OrderRow, "driver_id">>).flatMap((order) => order.driver_id ? [order.driver_id] : []));
+  const deliveriesByDriver = new Map<string, number>();
+  (unwrap(deliveredOrdersResult) as Array<Pick<OrderRow, "driver_id">>).forEach((order) => {
+    if (!order.driver_id) return;
+    deliveriesByDriver.set(order.driver_id, (deliveriesByDriver.get(order.driver_id) ?? 0) + 1);
+  });
+
+  return driverRows.map((driver) => mapDriver(
+    driver,
+    profilesByUserId,
+    shiftsByDriver,
+    vehiclesById,
+    busyDriverIds,
+    deliveriesByDriver,
+  ));
 }
 
 export async function getDriverBootstrap(context: CompanyContext & { driver: DriverRow }): Promise<DriverBootstrap> {

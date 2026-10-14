@@ -4,6 +4,6 @@ import { requireOperationsPageContext } from "@/lib/server/context";
 import { getAdminBootstrap } from "@/lib/server/operations";
 
 export default async function ConversationsPage() {
-  const data = await getAdminBootstrap(await requireOperationsPageContext());
+  const data = await getAdminBootstrap(await requireOperationsPageContext(), "conversations");
   return <><PageHeader title="Conversaciones" description="Atiende mensajes y conviértelos en pedidos confirmados." /><ConversationWorkspace data={data} /></>;
 }

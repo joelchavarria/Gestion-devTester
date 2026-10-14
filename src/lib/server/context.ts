@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -59,9 +60,12 @@ function redirectMissingCompany(error: unknown): never {
   throw error;
 }
 
+const getOperationsPageContext = cache(async () => requireOperationsContext());
+const getOwnerPageContext = cache(async () => requireOwnerContext());
+
 export async function requireOperationsPageContext() {
   try {
-    return await requireOperationsContext();
+    return await getOperationsPageContext();
   } catch (error) {
     return redirectMissingCompany(error);
   }
@@ -69,7 +73,7 @@ export async function requireOperationsPageContext() {
 
 export async function requireOwnerPageContext() {
   try {
-    return await requireOwnerContext();
+    return await getOwnerPageContext();
   } catch (error) {
     return redirectMissingCompany(error);
   }
