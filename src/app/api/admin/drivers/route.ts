@@ -8,6 +8,7 @@ const schema = z.object({
   email: z.string().trim().email().max(160),
   phone: z.string().trim().min(8).max(24),
   licenseNumber: z.string().trim().min(3).max(80),
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres.").max(72),
   identityDocument: z.string().trim().max(80).optional(),
   emergencyContact: z.string().trim().max(120).optional(),
   vehicleId: z.string().uuid(),
@@ -63,6 +64,8 @@ export async function POST(request: Request) {
 
     invitedUserId = invitation.user.id;
     const userId = invitedUserId;
+    const { error: passwordError } = await admin.auth.admin.updateUserById(userId, { password: input.password });
+    if (passwordError) throw new AppError(`No se pudo guardar la contraseña inicial: ${passwordError.message}`, 502);
     const { error: profileError } = await admin.from("profiles").upsert({ id: userId, full_name: input.fullName, phone: input.phone });
     if (profileError) throw profileError;
     const { data: member, error: memberError } = await admin
