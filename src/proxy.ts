@@ -20,7 +20,8 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const needsSession = protectedPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
+  const isDriverLogin = request.nextUrl.pathname === "/driver/login";
+  const needsSession = !isDriverLogin && protectedPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
   if (!needsSession) return response;
   const { data: { user } } = await supabase.auth.getUser();
   if (needsSession && !user) {
