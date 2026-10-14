@@ -25,8 +25,8 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (needsSession && !user) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.searchParams.set("next", request.nextUrl.pathname);
+    redirectUrl.pathname = request.nextUrl.pathname.startsWith("/driver") ? "/driver/login" : "/login";
+    redirectUrl.searchParams.delete("next");
     return NextResponse.redirect(redirectUrl);
   }
   // Keep login reachable for account switching. A driver and an administrator can

@@ -6,7 +6,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export function LoginScreen() {
+type LoginMode = "admin" | "driver";
+
+export function LoginScreen({ mode = "admin" }: { mode?: LoginMode }) {
+  const isDriver = mode === "driver";
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +61,12 @@ export function LoginScreen() {
           .limit(1)
           .maybeSingle();
         if (membershipError) throw membershipError;
-        destination = !membership ? "/onboarding" : membership.role === "driver" ? "/driver" : "/admin";
-      } else {
+        if (membership?.role === "driver") {
+          await supabase.auth.signOut();
+          throw new Error("Esta es una cuenta de motorizado. Usa el acceso de conductor.");
+        }
+        destination = !membership ? "/onboarding" : "/admin";
+      } else if (isDriver) {
         const response = await fetch("/api/auth/driver-login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -68,6 +75,8 @@ export function LoginScreen() {
         const payload = await response.json() as { destination?: string; error?: string };
         if (!response.ok) throw new Error(payload.error ?? "Usuario o clave incorrectos.");
         destination = payload.destination ?? "/driver";
+      } else {
+        throw new Error("El panel administrativo requiere el correo de la cuenta administradora.");
       }
       router.replace(destination);
       router.refresh();
@@ -87,7 +96,8 @@ export function LoginScreen() {
     setNotice(null);
     setLoading(true);
     try {
-      const { error: resetError } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login?recovery=1` });
+      const resetPath = isDriver ? "/driver/login" : "/login";
+      const { error: resetError } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}${resetPath}?recovery=1` });
       if (resetError) throw resetError;
       setNotice("Te enviamos un enlace para crear una nueva contraseña.");
     } catch (caught) {
@@ -116,18 +126,18 @@ export function LoginScreen() {
       <section className="auth-card-wrap">
         <div className="auth-card">
           <span className="auth-icon"><LockKey size={25} weight="fill" /></span>
-          <h2>{recoveryMode ? "Crea una nueva contraseña" : "Bienvenido de vuelta"}</h2>
-          <p>{recoveryMode ? "Elige una clave segura para volver a entrar." : "Ingresa a tu panel de operaciones."}</p>
+          <h2>{recoveryMode ? "Crea una nueva contraseña" : isDriver ? "Acceso de motorizado" : "Bienvenido de vuelta"}</h2>
+          <p>{recoveryMode ? "Elige una clave segura para volver a entrar." : isDriver ? "Entra a tu jornada y consulta tus pedidos." : "Ingresa a tu panel de operaciones."}</p>
           <form onSubmit={submit} className="auth-form">
-            {!recoveryMode ? <label>Usuario o correo electrónico<input name="email" type="text" placeholder="usuario o tu@empresa.com" autoComplete="username" required /></label> : null}
+            {!recoveryMode ? <label>{isDriver ? "Usuario del motorizado" : "Correo del administrador"}<input name="email" type={isDriver ? "text" : "email"} placeholder={isDriver ? "Ej. jchavarria" : "tu@empresa.com"} autoComplete={isDriver ? "username" : "email"} required /></label> : null}
             <label>{recoveryMode ? "Nueva contraseña" : "Contraseña"}<input name="password" type="password" placeholder="••••••••" autoComplete={recoveryMode ? "new-password" : "current-password"} minLength={recoveryMode ? 8 : undefined} required /></label>
             {!recoveryMode ? <div className="auth-form-row"><label className="check-label"><input type="checkbox" defaultChecked /> Recordarme</label><button className="text-button" type="button" onClick={() => { setResetOpen((current) => !current); setError(null); setNotice(null); }}>¿Olvidaste tu contraseña?</button></div> : null}
             {!recoveryMode && resetOpen ? <div className="password-reset-inline"><label>Correo para recuperar<input name="resetEmail" type="email" value={resetEmail} onChange={(event) => setResetEmail(event.target.value)} placeholder="tu@empresa.com" autoComplete="email" /></label><button className="button button-secondary button-full" type="button" disabled={loading} onClick={() => { void requestPasswordReset(); }}>Enviar enlace de recuperación</button></div> : null}
             {error ? <p className="form-error" role="alert">{error}</p> : null}
             {notice ? <p className="form-notice" role="status">{notice}</p> : null}
-            <button className="button button-primary button-full" disabled={loading} type="submit">{loading ? "Guardando…" : recoveryMode ? "Actualizar contraseña" : "Ingresar al panel"}<ArrowRight size={18} weight="bold" /></button>
+          <button className="button button-primary button-full" disabled={loading} type="submit">{loading ? "Guardando…" : recoveryMode ? "Actualizar contraseña" : isDriver ? "Entrar a la PWA" : "Ingresar al panel"}<ArrowRight size={18} weight="bold" /></button>
           </form>
-          <p className="auth-switch">¿Aún no tienes cuenta? <Link href="/registro">Crea tu empresa</Link></p>
+          <p className="auth-switch">{isDriver ? <>¿Eres administrador? <Link href="/login">Ir al panel</Link></> : <>¿Eres motorizado? <Link href="/driver/login">Acceso de conductor</Link><br />¿Aún no tienes cuenta? <Link href="/registro">Crea tu empresa</Link></>}</p>
         </div>
       </section>
     </main>
