@@ -63,6 +63,7 @@ export function DriverManager({ drivers }: { drivers: OperationalDriver[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fullName: String(formData.get("fullName") ?? ""),
+          username: String(formData.get("username") ?? ""),
           phone: String(formData.get("phone") ?? ""),
           email: String(formData.get("email") ?? ""),
           password: String(formData.get("password") ?? ""),
@@ -226,14 +227,15 @@ function DriverForm({ mode, vehicles, loadingVehicles, onClose, onSave, saving, 
       <form action={onSave} className="grid gap-5 px-6 pb-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nombre completo"><Input className="h-10" name="fullName" placeholder="Ej. Luis Rodríguez" autoComplete="off" data-lpignore="true" required /></Field>
+          <Field label="Usuario del driver"><Input className="h-10" name="username" placeholder="Ej. luis01" autoComplete="off" data-lpignore="true" pattern="[a-zA-Z0-9._-]{3,32}" required /></Field>
           <Field label="Teléfono WhatsApp"><Input className="h-10" name="phone" type="tel" placeholder="+505 8888 0000" autoComplete="off" data-lpignore="true" required /></Field>
           <Field label="Correo de invitación"><Input className="h-10" name="email" type="email" placeholder="motorizado@correo.com" autoComplete="off" data-lpignore="true" required /></Field>
-          <Field label="Contraseña inicial"><Input className="h-10" name="password" type="password" placeholder="Mínimo 8 caracteres" autoComplete="new-password" required minLength={8} /></Field>
+          <Field label="Clave numérica del driver"><Input className="h-10" name="password" type="password" placeholder="6 números" inputMode="numeric" pattern="[0-9]{6,12}" autoComplete="new-password" required minLength={6} maxLength={12} /></Field>
           <Field label="Documento de identidad"><Input className="h-10" name="identityDocument" placeholder="001-000000-0000A" /></Field>
           <Field label="Número de licencia"><Input className="h-10" name="licenseNumber" placeholder="N° de licencia" required /></Field>
           <Field label="Contacto de emergencia"><Input className="h-10" name="emergencyContact" type="tel" placeholder="+505 7777 0000" /></Field>
         </div>
-        <p className="-mt-2 text-xs leading-5 text-slate-500">Usa un correo diferente al del administrador. Esta contraseña inicial no se envía por correo; compártela con el motorizado por un canal seguro.</p>
+        <p className="-mt-2 text-xs leading-5 text-slate-500">El driver usará el usuario y la clave numérica para entrar. El correo solo recibe la invitación; comparte la clave por un canal seguro.</p>
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
           <div className="mb-3 flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm"><Motorcycle size={20} weight="fill" /></span><div><strong className="block text-sm text-slate-950">Vehículo reservado</strong><small>Solo aparecen unidades operativas y sin otro motorizado asignado.</small></div></div>
           <input type="hidden" name="vehicleId" value={vehicleId} />

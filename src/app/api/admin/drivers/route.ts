@@ -5,10 +5,11 @@ import { z } from "zod";
 
 const schema = z.object({
   fullName: z.string().trim().min(3).max(120),
+  username: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9._-]{2,31}$/, "El usuario debe tener entre 3 y 32 caracteres y usar solo letras, números, punto, guion o guion bajo."),
   email: z.string().trim().email().max(160),
   phone: z.string().trim().min(8).max(24),
   licenseNumber: z.string().trim().min(3).max(80),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres.").max(72),
+  password: z.string().regex(/^\d{6,12}$/, "La clave debe tener entre 6 y 12 números."),
   identityDocument: z.string().trim().max(80).optional(),
   emergencyContact: z.string().trim().max(120).optional(),
   vehicleId: z.string().uuid(),
@@ -24,6 +25,10 @@ export async function POST(request: Request) {
     const context = await requireOwnerContext();
     const admin = createSupabaseAdminClient();
     cleanupAdmin = admin;
+    const { data: usersResult, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (usersError) throw usersError;
+    const usernameTaken = usersResult.users.some((user) => String(user.user_metadata?.username ?? "").toLowerCase() === input.username);
+    if (usernameTaken) throw new AppError("Ese nombre de usuario ya está ocupado. Elige otro.", 409);
     const [vehicleResult, assignedResult, shiftResult] = await Promise.all([
       admin.from("vehicles").select("id, status, current_odometer_km, next_maintenance_km").eq("id", input.vehicleId).eq("company_id", context.companyId).maybeSingle(),
       admin.from("driver_profiles").select("id").eq("company_id", context.companyId).eq("assigned_vehicle_id", input.vehicleId).maybeSingle(),
@@ -50,6 +55,7 @@ export async function POST(request: Request) {
         full_name: input.fullName,
         phone: input.phone,
         identity_document: input.identityDocument || null,
+        username: input.username,
       },
       redirectTo,
     });

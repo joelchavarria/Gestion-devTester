@@ -16,26 +16,35 @@ export function LoginScreen() {
     setLoading(true);
     setError(null);
     const formData = new FormData(event.currentTarget);
+    const identifier = String(formData.get("email") ?? "").trim();
     try {
       const supabase = createSupabaseBrowserClient();
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: String(formData.get("email")),
-        password: String(formData.get("password")),
-      });
-      if (signInError) throw signInError;
-      const { data: membership, error: membershipError } = await supabase.from("company_members")
-        .select("role")
-        .eq("user_id", data.user.id)
-        .eq("is_active", true)
-        .order("joined_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (membershipError) throw membershipError;
-      const destination = !membership
-        ? "/onboarding"
-        : membership.role === "driver"
-          ? "/driver"
-          : "/admin";
+      let destination: string;
+      if (identifier.includes("@")) {
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email: identifier,
+          password: String(formData.get("password")),
+        });
+        if (signInError) throw signInError;
+        const { data: membership, error: membershipError } = await supabase.from("company_members")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .eq("is_active", true)
+          .order("joined_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (membershipError) throw membershipError;
+        destination = !membership ? "/onboarding" : membership.role === "driver" ? "/driver" : "/admin";
+      } else {
+        const response = await fetch("/api/auth/driver-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: identifier, password: String(formData.get("password")) }),
+        });
+        const payload = await response.json() as { destination?: string; error?: string };
+        if (!response.ok) throw new Error(payload.error ?? "Usuario o clave incorrectos.");
+        destination = payload.destination ?? "/driver";
+      }
       router.replace(destination);
       router.refresh();
     } catch (caught) {
@@ -66,7 +75,7 @@ export function LoginScreen() {
           <h2>Bienvenido de vuelta</h2>
           <p>Ingresa a tu panel de operaciones.</p>
           <form onSubmit={submit} className="auth-form">
-            <label>Correo electrónico<input name="email" type="email" placeholder="tu@empresa.com" autoComplete="email" required /></label>
+            <label>Usuario o correo electrónico<input name="email" type="text" placeholder="usuario o tu@empresa.com" autoComplete="username" required /></label>
             <label>Contraseña<input name="password" type="password" placeholder="••••••••" autoComplete="current-password" required /></label>
             <div className="auth-form-row"><label className="check-label"><input type="checkbox" defaultChecked /> Recordarme</label><button className="text-button" type="button">¿Olvidaste tu contraseña?</button></div>
             {error ? <p className="form-error" role="alert">{error}</p> : null}
