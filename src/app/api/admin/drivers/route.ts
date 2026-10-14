@@ -14,11 +14,15 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  let invitedUserId: string | null = null;
+  let cleanupAdmin: ReturnType<typeof createSupabaseAdminClient> | undefined;
+
   try {
     assertSameOrigin(request);
     const input = schema.parse(await request.json());
     const context = await requireOwnerContext();
     const admin = createSupabaseAdminClient();
+    cleanupAdmin = admin;
     const [vehicleResult, assignedResult, shiftResult] = await Promise.all([
       admin.from("vehicles").select("id, status, current_odometer_km, next_maintenance_km").eq("id", input.vehicleId).eq("company_id", context.companyId).maybeSingle(),
       admin.from("driver_profiles").select("id").eq("company_id", context.companyId).eq("assigned_vehicle_id", input.vehicleId).maybeSingle(),
@@ -33,6 +37,11 @@ export async function POST(request: Request) {
     if (vehicleResult.data.next_maintenance_km !== null && vehicleResult.data.current_odometer_km >= vehicleResult.data.next_maintenance_km) {
       throw new AppError("El vehículo seleccionado requiere mantenimiento antes de asignarlo.");
     }
+    const { data: actorResult, error: actorError } = await admin.auth.admin.getUserById(context.userId);
+    if (actorError) throw actorError;
+    if (actorResult.user?.email?.trim().toLocaleLowerCase() === input.email.toLocaleLowerCase()) {
+      throw new AppError("Usa un correo diferente al del administrador. El motorizado necesita su propia cuenta para entrar a la PWA.", 409);
+    }
     // This public bridge consumes Supabase's invite hash before /driver's auth guard runs.
     const redirectTo = new URL("/auth/accept-invite", request.url).toString();
     const { data: invitation, error: invitationError } = await admin.auth.admin.inviteUserByEmail(input.email, {
@@ -43,9 +52,17 @@ export async function POST(request: Request) {
       },
       redirectTo,
     });
-    if (invitationError || !invitation.user) throw new Error(invitationError?.message ?? "No fue posible preparar la invitación.");
+    if (invitationError) {
+      const message = invitationError.message.toLocaleLowerCase();
+      if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+        throw new AppError("Ese correo ya tiene una cuenta. Usa otro correo del motorizado o un alias de prueba como joelchavarria308+driver@gmail.com.", 409);
+      }
+      throw new AppError(`No se pudo enviar la invitación: ${invitationError.message}`, 502);
+    }
+    if (!invitation.user) throw new AppError("Supabase no devolvió la cuenta invitada. Intenta nuevamente.", 502);
 
-    const userId = invitation.user.id;
+    invitedUserId = invitation.user.id;
+    const userId = invitedUserId;
     const { error: profileError } = await admin.from("profiles").upsert({ id: userId, full_name: input.fullName, phone: input.phone });
     if (profileError) throw profileError;
     const { data: member, error: memberError } = await admin
@@ -74,6 +91,9 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ message: "Invitación creada y enviada al correo del motorizado." }, { status: 201 });
   } catch (error) {
+    if (invitedUserId && cleanupAdmin) {
+      await cleanupAdmin.auth.admin.deleteUser(invitedUserId).catch(() => undefined);
+    }
     return apiErrorResponse(error);
   }
 }
